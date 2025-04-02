@@ -75,15 +75,32 @@ class ReleaseHelper:
         """Get the latest release tag from git."""
         self.git_helper.pull_all()
         try:
-            result = subprocess.run(
-                ["git", "describe", "--tags", "$(git rev-list --tags --max-count=1)"],
-                capture_output=True,
-                text=True,
-                check=True,
-                cwd=self.repo_dir,
-            )
-            return result.stdout.strip()
-        except subprocess.CalledProcessError:
+            # Get a repo object
+            repo = git.Repo(self.repo_dir)
+            
+            # Check if there are any tags
+            if not repo.tags:
+                self.git_helper.error("No release tags found. Make sure to fly the release pipeline.")
+                sys.exit(1)
+            
+            # Get the most recent tag based on commit date
+            tags_with_dates = []
+            for tag in repo.tags:
+                try:
+                    tagged_commit = tag.commit
+                    commit_date = tagged_commit.committed_datetime
+                    tags_with_dates.append((tag, commit_date))
+                except Exception:
+                    continue
+                    
+            if not tags_with_dates:
+                self.git_helper.error("No valid release tags found. Make sure to fly the release pipeline.")
+                sys.exit(1)
+                
+            # Sort by commit date (newest first)
+            latest_tag = sorted(tags_with_dates, key=lambda x: x[1], reverse=True)[0][0]
+            return latest_tag.name
+        except Exception:
             self.git_helper.error("No release tags found. Make sure to fly the release pipeline.")
             sys.exit(1)
 
@@ -193,15 +210,10 @@ class ReleaseHelper:
         """Get all release tags from the params repo."""
         try:
             self.git_helper.pull_all(repo=self.params_repo)
-            result = subprocess.run(
-                ["git", "tag", "-l"],
-                capture_output=True,
-                text=True,
-                check=True,
-                cwd=self.params_dir,
-            )
-            return result.stdout.strip().split("\n")
-        except subprocess.CalledProcessError as e:
+            repo = git.Repo(self.params_dir)
+            tags = [tag.name for tag in repo.tags]
+            return tags
+        except Exception as e:
             self.git_helper.error(f"Failed to get params release tags: {e}")
             return []
 

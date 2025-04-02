@@ -2,7 +2,6 @@
 
 import os
 import re
-import subprocess
 from typing import Dict, List, Optional, Tuple, Union
 
 import git
@@ -36,8 +35,8 @@ class GitHelper:
         """Extract owner and repo name from git remote URL."""
         repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
         try:
-            repo = git.Repo(repo_dir)
-            for remote in repo.remotes:
+            repo_obj = git.Repo(repo_dir)
+            for remote in repo_obj.remotes:
                 if remote.name == "origin":
                     url = next(remote.urls)
                     # Handle SSH or HTTPS URL formats
@@ -58,80 +57,79 @@ class GitHelper:
         except (git.InvalidGitRepositoryError, git.NoSuchPathError):
             return False
 
-    def pull(self, repo: Optional[str] = None) -> None:
-        """Pull changes from remote."""
+    def _get_repo(self, repo: Optional[str] = None) -> git.Repo:
+        """Get a git.Repo object for the specified repository."""
         repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
         try:
-            subprocess.run(["git", "pull", "-q"], cwd=repo_dir, check=True)
-        except subprocess.CalledProcessError as e:
+            return git.Repo(repo_dir)
+        except (git.InvalidGitRepositoryError, git.NoSuchPathError) as e:
+            self.error(f"Failed to get repository: {e}")
+            raise
+
+    def pull(self, repo: Optional[str] = None) -> None:
+        """Pull changes from remote."""
+        try:
+            repo_obj = self._get_repo(repo)
+            origin = repo_obj.remotes.origin
+            origin.pull(quiet=True)
+        except Exception as e:
             self.error(f"Failed to pull changes: {e}")
 
     def pull_all(self, repo: Optional[str] = None) -> None:
         """Pull all changes from all remotes."""
-        repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
         try:
-            subprocess.run(["git", "pull", "--all", "-q"], cwd=repo_dir, check=True)
-        except subprocess.CalledProcessError as e:
+            repo_obj = self._get_repo(repo)
+            for remote in repo_obj.remotes:
+                remote.pull(quiet=True)
+        except Exception as e:
             self.error(f"Failed to pull changes: {e}")
 
     def get_current_branch(self, repo: Optional[str] = None) -> str:
         """Get the current branch name."""
-        repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
         try:
-            result = subprocess.run(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                capture_output=True,
-                text=True,
-                check=True,
-                cwd=repo_dir,
-            )
-            return result.stdout.strip()
-        except subprocess.CalledProcessError as e:
+            repo_obj = self._get_repo(repo)
+            return repo_obj.active_branch.name
+        except Exception as e:
             self.error(f"Failed to get current branch: {e}")
             return ""
 
     def get_tags(self, repo: Optional[str] = None) -> Union[List[git.Tag], Dict[str, git.Tag]]:
         """Get all git tags."""
-        repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
         try:
-            repo = git.Repo(repo_dir)
-            return repo.tags
-        except (git.InvalidGitRepositoryError, git.NoSuchPathError):
+            repo_obj = self._get_repo(repo)
+            return repo_obj.tags
+        except (git.InvalidGitRepositoryError, git.NoSuchPathError, Exception):
             return []
 
     def delete_tag(self, tag: str, repo: Optional[str] = None) -> bool:
         """Delete a git tag locally and remotely."""
-        repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
         try:
-            subprocess.run(["git", "tag", "--delete", tag], cwd=repo_dir, check=True)
-            subprocess.run(["git", "push", "--delete", "origin", tag], cwd=repo_dir, check=True)
+            repo_obj = self._get_repo(repo)
+            # Delete locally
+            repo_obj.delete_tag(tag)
+            # Delete remotely
+            origin = repo_obj.remotes.origin
+            origin.push(refspec=f":refs/tags/{tag}")
             return True
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             self.error(f"Failed to delete tag: {e}")
             return False
 
     def has_uncommitted_changes(self, repo: Optional[str] = None) -> bool:
         """Check if there are any uncommitted changes."""
-        repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
         try:
-            result = subprocess.run(
-                ["git", "status", "--porcelain"],
-                capture_output=True,
-                text=True,
-                check=True,
-                cwd=repo_dir,
-            )
-            return bool(result.stdout.strip())
-        except subprocess.CalledProcessError as e:
+            repo_obj = self._get_repo(repo)
+            return repo_obj.is_dirty()
+        except Exception as e:
             self.error(f"Failed to check git status: {e}")
             return True
 
     def reset_changes(self, repo: Optional[str] = None) -> None:
         """Reset all changes in the working directory."""
-        repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
         try:
-            subprocess.run(["git", "reset", "--hard"], cwd=repo_dir, check=True)
-        except subprocess.CalledProcessError as e:
+            repo_obj = self._get_repo(repo)
+            repo_obj.head.reset(index=True, working_tree=True)
+        except Exception as e:
             self.error(f"Failed to reset changes: {e}")
 
     def update_release_tag_in_params(
@@ -159,38 +157,55 @@ class GitHelper:
 
     def create_and_merge_branch(self, repo: str, branch_name: str, commit_message: str) -> bool:
         """Create a new branch, commit changes, and merge it into master."""
-        repo_dir = os.path.join(self.home, "git", repo)
         try:
-            # Create and switch to new branch
-            subprocess.run(["git", "checkout", "-b", branch_name], cwd=repo_dir, check=True)
-
-            # Add and commit changes
-            subprocess.run(["git", "add", "."], cwd=repo_dir, check=True)
-            subprocess.run(["git", "commit", "-m", commit_message], cwd=repo_dir, check=True)
-
-            # Switch to master and merge
-            subprocess.run(["git", "checkout", "master"], cwd=repo_dir, check=True)
-            subprocess.run(["git", "pull", "origin", "master"], cwd=repo_dir, check=True)
-            subprocess.run(["git", "rebase", branch_name], cwd=repo_dir, check=True)
-            subprocess.run(["git", "push", "origin", "master"], cwd=repo_dir, check=True)
-
-            # Clean up branch
-            subprocess.run(["git", "branch", "-D", branch_name], cwd=repo_dir, check=True)
+            repo_obj = self._get_repo(repo)
+            
+            # Create and checkout new branch
+            new_branch = repo_obj.create_head(branch_name)
+            new_branch.checkout()
+            
+            # Add all changes
+            repo_obj.git.add(A=True)
+            
+            # Commit changes
+            repo_obj.index.commit(commit_message)
+            
+            # Checkout master branch
+            master = repo_obj.heads.master
+            master.checkout()
+            
+            # Pull latest changes from origin/master
+            origin = repo_obj.remotes.origin
+            origin.pull('master')
+            
+            # Rebase changes onto master
+            repo_obj.git.rebase(branch_name)
+            
+            # Push to remote
+            origin.push('master')
+            
+            # Delete the branch
+            repo_obj.delete_head(branch_name, force=True)
+            
             return True
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             self.error(f"Failed to create and merge branch: {e}")
             return False
 
     def create_and_push_tag(self, repo: str, tag_name: str, tag_message: str) -> bool:
         """Create and push a git tag."""
-        repo_dir = os.path.join(self.home, "git", repo)
         try:
-            subprocess.run(
-                ["git", "tag", "-a", tag_name, "-m", tag_message], cwd=repo_dir, check=True
-            )
-            subprocess.run(["git", "push", "origin", tag_name], cwd=repo_dir, check=True)
+            repo_obj = self._get_repo(repo)
+            
+            # Create tag
+            repo_obj.create_tag(tag_name, message=tag_message)
+            
+            # Push tag to remote
+            origin = repo_obj.remotes.origin
+            origin.push(tag_name)
+            
             return True
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             self.error(f"Failed to create and push tag: {e}")
             return False
 
@@ -201,13 +216,11 @@ class GitHelper:
 
     def tag_exists(self, tag: str, repo: Optional[str] = None) -> bool:
         """Check if a git tag exists."""
-        repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
         try:
-            result = subprocess.run(
-                ["git", "show-ref", "--verify", "--quiet", f"refs/tags/{tag}"],
-                cwd=repo_dir,
-                check=True,
-            )
-            return result.returncode == 0
-        except subprocess.CalledProcessError:
+            repo_obj = self._get_repo(repo)
+            for existing_tag in repo_obj.tags:
+                if existing_tag.name == tag:
+                    return True
+            return False
+        except Exception:
             return False
