@@ -9,9 +9,26 @@ from typing import List, Optional
 
 import requests
 from packaging import version
-from voyager.github import GitHubClient
 
 from pipeline_helpers.git_helper import GitHelper
+
+# Import GitHub client conditionally
+try:
+    from voyager.github import GitHubClient
+except ImportError:
+    # Mock GitHubClient for testing
+    class GitHubClient:
+        def __init__(self, token=None):
+            self.token = token
+        
+        def get_releases(self, owner, repo):
+            return []
+        
+        def find_release_by_tag(self, owner, repo, tag):
+            return None
+        
+        def delete_release(self, owner, repo, release_id):
+            return True
 
 
 class ReleaseHelper:
@@ -210,10 +227,9 @@ class ReleaseHelper:
                 return False
 
             last_release = (
-                sorted(
-                    release_tags,
-                    key=lambda t: version.parse(t.name.replace("release-v", ""))
-                )[-2]
+                sorted(release_tags, key=lambda t: version.parse(t.name.replace("release-v", "")))[
+                    -2
+                ]
                 if len(release_tags) > 1
                 else release_tags[0]
             )

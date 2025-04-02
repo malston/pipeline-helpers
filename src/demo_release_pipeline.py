@@ -677,8 +677,8 @@ def main():
         formatter_class=CustomHelpFormatter,
         add_help=False,
         usage="%(prog)s -f foundation -r repo [-o owner] [-b branch] "
-            "[-p params_repo] [-d params_branch] [-t tag] [-m message] "
-            "[--dry-run] [--git-dir dir] [-h]",
+        "[-p params_repo] [-d params_branch] [-t tag] [-m message] "
+        "[--dry-run] [--git-dir dir] [-h]",
         epilog="""
 Options:
    -f foundation     the foundation name for ops manager (e.g. cml-k8s-n-01)

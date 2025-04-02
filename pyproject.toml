@@ -77,6 +77,10 @@ exclude = '''
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
 
+[tool.hatch.build]
+packages = ["src/pipeline_helpers"]
+artifacts = ["src/*.py"]  # Include individual scripts
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
