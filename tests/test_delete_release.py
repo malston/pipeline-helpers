@@ -1,3 +1,4 @@
+import os
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -118,7 +119,7 @@ def test_repo_name_construction(input_args, expected_repo):
             main()
 
             mock_git_helper.assert_called_once_with(
-                repo="ns-mgmt", repo_dir=f"/Users/malston/git/{expected_repo}"
+                repo="ns-mgmt", repo_dir=os.path.join(os.path.expanduser("~"), "git", expected_repo)
             )
 
 
