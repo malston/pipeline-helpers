@@ -1,12 +1,9 @@
-from unittest.mock import MagicMock, patch
-import os
 import sys
-from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-import sys
-sys.path.insert(0, '../src')  # This ensures src directory is in path
+sys.path.insert(0, "../src")  # This ensures src directory is in path
 
 from pipeline_helpers.release_helper import ReleaseHelper
 from src.delete_release import delete_git_tag, main, parse_args, print_available_releases

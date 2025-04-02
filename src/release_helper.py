@@ -207,19 +207,22 @@ class ReleaseHelper:
                 self.git_helper.error("No release tags found")
                 return False
 
-            last_release = (
-                sorted(release_tags, key=lambda t: version.parse(t.name.lstrip("release-v")))[-2]
-                if len(release_tags) > 1
-                else release_tags[0]
+            # Sort tags by version and get the second-to-last one if available
+            sorted_tags = sorted(
+                release_tags,
+                key=lambda t: version.parse(t.name.replace("release-v", ""))
             )
-            current_release = sorted(
-                release_tags, key=lambda t: version.parse(t.name.lstrip("release-v"))
-            )[-1]
+            last_release = (
+                sorted_tags[-2] if len(release_tags) > 1 else release_tags[0]
+            )
+            # Use the last tag as the current release
+            current_release = sorted_tags[-1]
             last_version = last_release.name.replace("release-v", "")
             current_version = current_release.name.replace("release-v", "")
 
             self.git_helper.info(
-                f"Updating the params for the tkgi-{self.repo} pipeline from {last_version} to {current_version}"
+                f"Updating the params for the tkgi-{self.repo} pipeline "
+                f"from {last_version} to {current_version}"
             )
             if not self.git_helper.confirm("Do you want to continue?"):
                 return False
@@ -263,10 +266,14 @@ class ReleaseHelper:
 
             # Create and merge branch
             branch_name = f"{self.repo}-release-{to_version}"
+            commit_msg = (
+                f"Update git_release_tag from release-{from_version} "
+                f"to release-{to_version}\n\nNOTICKET"
+            )
             self.git_helper.create_and_merge_branch(
                 self.params_repo,
                 branch_name,
-                f"Update git_release_tag from release-{from_version} to release-{to_version}\n\nNOTICKET",
+                commit_msg,
             )
 
             # Create and push tag

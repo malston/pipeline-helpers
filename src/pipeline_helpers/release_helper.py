@@ -20,13 +20,13 @@ except ImportError:
     class GitHubClient:
         def __init__(self, token=None):
             self.token = token
-        
+
         def get_releases(self, owner, repo):
             return []
-        
+
         def find_release_by_tag(self, owner, repo, tag):
             return None
-        
+
         def delete_release(self, owner, repo, release_id):
             return True
 

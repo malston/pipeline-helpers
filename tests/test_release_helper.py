@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 
-import os
 import subprocess
-import sys
 import unittest
-from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
 # Using import from package
-
 from pipeline_helpers.release_helper import ReleaseHelper
 
 
