@@ -10,11 +10,11 @@ from typing import List, Optional
 import requests
 from packaging import version
 
-from pipeline_helpers.git_helper import GitHelper
+from helpers.git_helper import GitHelper
 
 # Import GitHub client conditionally
 try:
-    from pipeline_helpers.github import GitHubClient
+    from helpers.github import GitHubClient
 except ImportError:
     # Mock GitHubClient for testing
     class GitHubClient:

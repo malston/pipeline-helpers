@@ -4,8 +4,8 @@ import argparse
 import os
 import subprocess
 
-from pipeline_helpers.git_helper import GitHelper
-from pipeline_helpers.release_helper import ReleaseHelper
+from helpers.git_helper import GitHelper
+from helpers.release_helper import ReleaseHelper
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):

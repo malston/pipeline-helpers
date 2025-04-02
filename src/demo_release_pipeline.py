@@ -7,8 +7,8 @@ import subprocess
 import sys
 from typing import Optional
 
-from pipeline_helpers.git_helper import GitHelper
-from pipeline_helpers.release_helper import ReleaseHelper
+from helpers.git_helper import GitHelper
+from helpers.release_helper import ReleaseHelper
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):

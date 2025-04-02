@@ -78,7 +78,7 @@ exclude = '''
 packages = ["src"]
 
 [tool.hatch.build]
-packages = ["src/pipeline_helpers"]
+packages = ["src/helpers"]
 artifacts = ["src/*.py"]  # Include individual scripts
 
 [tool.pytest.ini_options]
