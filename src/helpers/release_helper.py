@@ -277,10 +277,6 @@ class ReleaseHelper:
                 self.git_helper.error(f"Failed to update release tag in params: {e}")
                 return False
 
-            if not self.git_helper.confirm("Do you want to continue with these commits?"):
-                self.git_helper.reset_changes(repo=self.params_repo)
-                return False
-
             # For tests to pass, we need to ensure the code will run even if GitPython can't be used
             try:
                 # Using GitPython to get status and diff
@@ -293,10 +289,14 @@ class ReleaseHelper:
                 # Print git diff
                 diff_output = params_repo_obj.git.diff()
                 print(diff_output)
-            except Exception as e:
+            except (git.exc.GitError, git.exc.InvalidGitRepositoryError, OSError) as e:
                 self.git_helper.warn(f"Could not show git status/diff with GitPython: {e}")
                 self.git_helper.info("Continuing with commit anyway...")
                 # Don't return False here, as this is just informational
+
+            if not self.git_helper.confirm("Do you want to continue with these commits?"):
+                self.git_helper.reset_changes(repo=self.params_repo)
+                return False
 
             # Create and merge branch
             branch_name = f"{self.repo}-release-{to_version}"
@@ -318,7 +318,7 @@ class ReleaseHelper:
             )
 
             return True
-        except (IOError, OSError, ValueError, Exception) as e:
+        except (IOError, OSError, ValueError, git.exc.GitError) as e:
             self.git_helper.error(f"Failed to update git release tag: {e}")
             return False
 
