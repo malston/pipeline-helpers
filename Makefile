@@ -1,8 +1,8 @@
-# Makefile for Voyager development
+# Makefile for pipeline-helpers development
 
 .PHONY: setup venv install dev test lint format clean build publish activate security check-env help
 
-PYTHON_VERSION ?= 3.13
+PYTHON_VERSION ?= 3.11
 SRC_DIR = src
 TEST_DIR = tests
 
@@ -22,8 +22,8 @@ endif
 # Default target when just running 'make'
 help:
 	@echo "Available commands:"
-	@echo "  make setup     - Set up development environment with mise"
-	@echo "  make venv      - Create a virtual environment using uv"
+	@echo "  make setup     - Check Python environment and development tools"
+	@echo "  make venv      - Create a virtual environment (uses uv if available)"
 	@echo "  make install   - Install dependencies and package in development mode"
 	@echo "  make dev       - Complete development setup (venv + install)"
 	@echo "  make activate  - Show instructions to activate virtual environment"
@@ -34,61 +34,73 @@ help:
 	@echo "  make build     - Build package distribution files"
 	@echo "  make publish   - Publish package to PyPI (requires credentials)"
 	@echo "  make check-env - Check if development environment is properly set up"
+	@echo "  make security  - Check dependencies for security vulnerabilities"
 
-# Set up the development environment with mise and uv
+# Set up the development environment with pythonenv and uv
 setup:
+	@echo "Checking Python environment setup..."
+	@echo "Python version: $$($(PYTHON) --version 2>&1)"
 	@if command -v mise >/dev/null 2>&1; then \
-		echo "mise is already set up, skipping mise installation"; \
+		echo "mise found, you can use it to manage Python versions"; \
+		echo "To install Python $(PYTHON_VERSION) with mise:"; \
+		echo "  mise install python@$(PYTHON_VERSION)"; \
+	elif command -v pyenv >/dev/null 2>&1; then \
+		echo "pyenv found, you can use it to manage Python versions"; \
+		echo "To install Python $(PYTHON_VERSION) with pyenv:"; \
+		echo "  pyenv install $(PYTHON_VERSION)"; \
 	else \
-		echo "mise not found, installing..."; \
-		echo "You can install mise with:"; \
-		echo "  curl https://mise.run | sh"; \
-		echo ""; \
-		echo "Setup will continue, but you should install mise separately for best results."; \
+		echo "No version manager found. You can install one:"; \
+		echo "  mise: curl https://mise.run | sh"; \
+		echo "  pyenv: https://github.com/pyenv/pyenv#installation"; \
 	fi
-	@echo "Installing mise Python $(PYTHON_VERSION)..."
-	@mise install python
+	@echo ""
 	@echo "Checking for uv installation..."
 	@if command -v uv >/dev/null 2>&1; then \
-		echo "uv is already installed, using existing installation"; \
+		echo "✓ uv is already installed"; \
 	else \
-		echo "uv not found, installing..."; \
-		echo "You can install uv with:"; \
+		echo "uv not found. You can install it with:"; \
 		echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"; \
-		echo ""; \
-		echo "Setup will continue, but you should install uv separately for best results."; \
 	fi
-	@echo "Setup complete. Next step: run 'make dev'"
+	@echo ""
+	@echo "Setup check complete. Next step: run 'make dev'"
 
 # Create a virtual environment using uv
 venv:
-	@echo "Creating virtual environment with uv..."
-	@if command -v uv >/dev/null 2>&1; then \
-		uv venv; \
+	@echo "Setting up virtual environment..."
+	@if [ -d ".venv" ]; then \
+		echo "✓ Virtual environment already exists in .venv"; \
 	else \
-		echo "uv not found. Trying to create venv with python3..."; \
-		if command -v python3 >/dev/null 2>&1; then \
-			python3 -m venv .venv; \
+		echo "Creating virtual environment..."; \
+		if command -v uv >/dev/null 2>&1; then \
+			uv venv; \
 		else \
-			$(PYTHON) -m venv .venv; \
+			echo "uv not found. Creating venv with standard tools..."; \
+			if command -v python3 >/dev/null 2>&1; then \
+				python3 -m venv .venv; \
+			else \
+				$(PYTHON) -m venv .venv; \
+			fi; \
 		fi; \
+		echo "✓ Virtual environment created in .venv directory"; \
 	fi
-	@echo "Virtual environment created in .venv directory"
 
 # Install dependencies and the package in development mode
 install:
 	@echo "Installing development dependencies and package..."
-	@if [ -d ".venv" ]; then \
-		if command -v uv >/dev/null 2>&1; then \
-			uv pip install -e ".[dev]"; \
-		else \
-			. .venv/bin/activate && $(PYTHON) -m pip install -e ".[dev]"; \
-		fi; \
-	else \
+	@if [ ! -d ".venv" ]; then \
 		echo "Virtual environment not found. Please run 'make venv' first."; \
 		exit 1; \
 	fi
-	@echo "Installation complete"
+	@echo "Installing dependencies..."
+	@if command -v uv >/dev/null 2>&1; then \
+		uv pip install -e ".[dev]" || { \
+			echo "uv installation failed, trying standard pip..."; \
+			. .venv/bin/activate && pip install -e ".[dev]"; \
+		}; \
+	else \
+		. .venv/bin/activate && pip install -e ".[dev]"; \
+	fi
+	@echo "✓ Installation complete"
 
 # Complete development setup
 dev: venv install
@@ -169,19 +181,26 @@ check-env:
 	@echo "Python version: $$($(PYTHON) --version 2>&1)"
 	@if [ -d ".venv" ]; then \
 		echo "✓ Virtual environment found"; \
+		if [ -f ".venv/bin/activate" ]; then \
+			echo "  Checking installed packages..."; \
+			. .venv/bin/activate && pip list | grep -e pytest -e ruff -e black > /dev/null && \
+			echo "✓ Development dependencies installed" || \
+			echo "✗ Some development dependencies missing. Run 'make install'"; \
+		else \
+			echo "✗ Virtual environment appears corrupted. Run 'rm -rf .venv && make venv'"; \
+		fi; \
 	else \
 		echo "✗ Virtual environment not found. Run 'make venv'"; \
-		exit 1; \
 	fi
-	@if command -v mise >/dev/null 2>&1; then \
-		echo "✓ mise installed"; \
+	@if command -v mise >/dev/null 2>&1 || command -v pyenv >/dev/null 2>&1; then \
+		echo "✓ Python version manager installed"; \
 	else \
-		echo "✗ mise not found. Install with: curl https://mise.run | sh"; \
+		echo "ℹ️ No Python version manager found. Consider installing mise or pyenv"; \
 	fi
 	@if command -v uv >/dev/null 2>&1; then \
 		echo "✓ uv installed"; \
 	else \
-		echo "✗ uv not found. Using standard venv/pip"; \
+		echo "ℹ️ uv not found. Using standard pip (uv recommended for faster installs)"; \
 	fi
 	@if [ -f "pyproject.toml" ]; then \
 		echo "✓ pyproject.toml found"; \
@@ -189,7 +208,7 @@ check-env:
 		echo "✗ pyproject.toml missing"; \
 		exit 1; \
 	fi
-	@echo "Environment check complete. Development setup looks good!"
+	@echo "Environment check complete!"
 
 # Check all dependencies for security vulnerabilities
 security:
