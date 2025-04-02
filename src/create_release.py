@@ -9,6 +9,7 @@ from helpers.release_helper import ReleaseHelper
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
+    """Custom help formatter to modify the help output."""
     def format_help(self):
         help_text = super().format_help()
         # Remove the default options section
@@ -19,6 +20,7 @@ class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         prog="create_release.py",
         description="Create a new release",
@@ -72,6 +74,7 @@ Options:
 
 
 def main() -> None:
+    """Main function to create a new release."""
     args = parse_args()
     repo = "ns-mgmt"
     release_pipeline = f"tkgi-{repo}-release"
