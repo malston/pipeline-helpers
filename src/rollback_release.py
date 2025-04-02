@@ -3,15 +3,9 @@
 import argparse
 import os
 import subprocess
-import sys
-from pathlib import Path
 
-# Add the project root to the Python path
-project_root = str(Path(__file__).parent.parent)
-sys.path.insert(0, project_root)
-
-from scripts.release_helper import ReleaseHelper
-from scripts.git_helper import GitHelper
+from pipeline_helpers.git_helper import GitHelper
+from pipeline_helpers.release_helper import ReleaseHelper
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):

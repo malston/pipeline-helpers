@@ -13,15 +13,9 @@
 
 import argparse
 import os
-import sys
-from pathlib import Path
 
-# Add the project root to the Python path
-PROJECT_ROOT = str(Path(__file__).parent.parent)
-sys.path.insert(0, PROJECT_ROOT)
-
-from scripts.release_helper import ReleaseHelper
-from scripts.git_helper import GitHelper
+from pipeline_helpers.git_helper import GitHelper
+from pipeline_helpers.release_helper import ReleaseHelper
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -103,7 +97,7 @@ def delete_git_tag(
 
 def print_available_releases(releases: list) -> None:
     """Print a list of available GitHub releases."""
-    print(f"Available Github Releases:")
+    print("Available Github Releases:")
     for release in releases:
         print(f"{release['tag_name']} - {release['name']}")
 

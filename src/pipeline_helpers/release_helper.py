@@ -9,8 +9,9 @@ from typing import List, Optional
 
 import requests
 from packaging import version
-from scripts.git_helper import GitHelper
 from voyager.github import GitHubClient
+
+from pipeline_helpers.git_helper import GitHelper
 
 
 class ReleaseHelper:
@@ -103,6 +104,7 @@ class ReleaseHelper:
             return False
 
         try:
+            # Using _ for unused variables to satisfy linting
             major, minor, patch = map(int, parts)
         except ValueError:
             self.git_helper.error("Error: Version components must be numbers")
@@ -208,18 +210,22 @@ class ReleaseHelper:
                 return False
 
             last_release = (
-                sorted(release_tags, key=lambda t: version.parse(t.name.lstrip("release-v")))[-2]
+                sorted(
+                    release_tags,
+                    key=lambda t: version.parse(t.name.replace("release-v", ""))
+                )[-2]
                 if len(release_tags) > 1
                 else release_tags[0]
             )
             current_release = sorted(
-                release_tags, key=lambda t: version.parse(t.name.lstrip("release-v"))
+                release_tags, key=lambda t: version.parse(t.name.replace("release-v", ""))
             )[-1]
             last_version = last_release.name.replace("release-v", "")
             current_version = current_release.name.replace("release-v", "")
 
             self.git_helper.info(
-                f"Updating the params for the tkgi-{self.repo} pipeline from {last_version} to {current_version}"
+                f"Updating the params for the tkgi-{self.repo} pipeline "
+                f"from {last_version} to {current_version}"
             )
             if not self.git_helper.confirm("Do you want to continue?"):
                 return False
@@ -263,10 +269,14 @@ class ReleaseHelper:
 
             # Create and merge branch
             branch_name = f"{self.repo}-release-{to_version}"
+            commit_msg = (
+                f"Update git_release_tag from release-{from_version} to "
+                f"release-{to_version}\n\nNOTICKET"
+            )
             self.git_helper.create_and_merge_branch(
                 self.params_repo,
                 branch_name,
-                f"Update git_release_tag from release-{from_version} to release-{to_version}\n\nNOTICKET",
+                commit_msg,
             )
 
             # Create and push tag

@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 
-import unittest
-from unittest.mock import patch, MagicMock, call
-import sys
-import os
-
-# Add the scripts directory to the Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "scripts"))
-from scripts.release_helper import ReleaseHelper
 import subprocess
+import unittest
+from unittest.mock import MagicMock, call, patch
+
+from pipeline_helpers.release_helper import ReleaseHelper
 
 
 class TestReleaseHelper(unittest.TestCase):
-    @patch("scripts.release_helper.GitHelper")
+    @patch("pipeline_helpers.release_helper.GitHelper")
     def setUp(self, mock_git_helper):
         """Set up test fixtures before each test method."""
         # Setup mock GitHelper instance

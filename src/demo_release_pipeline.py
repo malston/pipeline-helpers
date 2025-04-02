@@ -6,14 +6,9 @@ import re
 import subprocess
 import sys
 from typing import Optional
-from pathlib import Path
 
-# Add the project root to the Python path
-PROJECT_ROOT = str(Path(__file__).parent.parent)
-sys.path.insert(0, PROJECT_ROOT)
-
-from scripts.git_helper import GitHelper
-from scripts.release_helper import ReleaseHelper
+from pipeline_helpers.git_helper import GitHelper
+from pipeline_helpers.release_helper import ReleaseHelper
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -104,7 +99,8 @@ class DemoReleasePipeline:
            **kwargs: Additional arguments to pass to subprocess.run
 
         Returns:
-           Optional[subprocess.CompletedProcess]: The result of running the command, or None if dry-run
+           Optional[subprocess.CompletedProcess]: The result of running the command,
+           or None if dry-run
         """
         repo_dir = repo_dir if repo_dir else self.repo_dir
         dry_run = self.dry_run if dry_run is None else dry_run
@@ -228,7 +224,8 @@ class DemoReleasePipeline:
 
             if self.dry_run:
                 self.git_helper.info(
-                    f"[DRY RUN] Would delete GitHub release {tag} for {owner}/{repo} (release_id: {release_id})"
+                    f"[DRY RUN] Would delete GitHub release {tag} for {owner}/{repo} "
+                    f"(release_id: {release_id})"
                 )
                 return
 
@@ -248,11 +245,11 @@ class DemoReleasePipeline:
         self.git_helper.info(f"Reverting to version: {previous_version}")
 
         if self.dry_run:
-            self.git_helper.info(f"[DRY RUN] Would perform the following actions:")
-            self.git_helper.info(f"1. Checkout and pull version branch")
+            self.git_helper.info("[DRY RUN] Would perform the following actions:")
+            self.git_helper.info("1. Checkout and pull version branch")
             self.git_helper.info(f"2. Update version file to {previous_version}")
-            self.git_helper.info(f"3. Commit and push changes")
-            self.git_helper.info(f"4. Recreate release branch")
+            self.git_helper.info("3. Commit and push changes")
+            self.git_helper.info("4. Recreate release branch")
             return
 
         try:
@@ -371,15 +368,15 @@ class DemoReleasePipeline:
             release_pipeline = f"tkgi-{self.repo}-{self.owner}-release"
 
         if self.dry_run:
-            self.git_helper.info(f"[DRY RUN] Would perform the following actions:")
+            self.git_helper.info("[DRY RUN] Would perform the following actions:")
             self.git_helper.info(f"1. Ask to recreate release pipeline: {release_pipeline}")
-            self.git_helper.info(f"2. Run fly.sh with parameters:")
+            self.git_helper.info("2. Run fly.sh with parameters:")
             self.git_helper.info(f"   - foundation: {self.foundation}")
             self.git_helper.info(f"   - release body: {self.release_body}")
             self.git_helper.info(f"   - owner: {self.owner}")
             self.git_helper.info(f"   - pipeline: {release_pipeline}")
             self.git_helper.info(f"3. Ask to run pipeline: {release_pipeline}")
-            self.git_helper.info(f"4. Update git release tag")
+            self.git_helper.info("4. Update git release tag")
             return
 
         # Recreate release pipeline if needed
@@ -442,18 +439,18 @@ class DemoReleasePipeline:
         set_release_pipeline = f"{mgmt_pipeline}-set-release-pipeline"
 
         if self.dry_run:
-            self.git_helper.info(f"[DRY RUN] Would perform the following actions:")
+            self.git_helper.info("[DRY RUN] Would perform the following actions:")
             self.git_helper.info(f"1. Ask to run pipeline: {set_release_pipeline}")
-            self.git_helper.info(f"2. Run fly.sh with parameters:")
+            self.git_helper.info("2. Run fly.sh with parameters:")
             self.git_helper.info(f"   - foundation: {self.foundation}")
             self.git_helper.info(f"   - set pipeline: {set_release_pipeline}")
             self.git_helper.info(f"   - branch: {self.branch}")
             self.git_helper.info(f"   - params branch: {self.params_branch}")
             self.git_helper.info(f"   - owner: {self.owner}")
             self.git_helper.info(f"   - pipeline: {mgmt_pipeline}")
-            self.git_helper.info(f"3. Unpause and trigger set-release-pipeline job")
+            self.git_helper.info("3. Unpause and trigger set-release-pipeline job")
             self.git_helper.info(f"4. Ask to run pipeline: {mgmt_pipeline}")
-            self.git_helper.info(f"5. Unpause and trigger prepare-kustomizations job")
+            self.git_helper.info("5. Unpause and trigger prepare-kustomizations job")
             return
 
         response = input(f"Do you want to run the {set_release_pipeline} pipeline? [yN] ")
@@ -518,7 +515,8 @@ class DemoReleasePipeline:
             mgmt_pipeline = f"tkgi-{self.repo}-{self.owner}-{self.foundation}"
 
         response = input(
-            f"Do you want to refly the {mgmt_pipeline} pipeline back to latest code on branch: {self.branch}? [yN] "
+            f"Do you want to refly the {mgmt_pipeline} pipeline "
+            f"back to latest code on branch: {self.branch}? [yN] "
         )
         if response.lower().startswith("y"):
             self.run_fly_script(["-f", self.foundation, "-b", self.branch, "-p", mgmt_pipeline])
@@ -678,7 +676,9 @@ def main():
         description="Demo release pipeline script",
         formatter_class=CustomHelpFormatter,
         add_help=False,
-        usage="%(prog)s -f foundation -r repo [-o owner] [-b branch] [-p params_repo] [-d params_branch] [-t tag] [-m message] [--dry-run] [--git-dir dir] [-h]",
+        usage="%(prog)s -f foundation -r repo [-o owner] [-b branch] "
+            "[-p params_repo] [-d params_branch] [-t tag] [-m message] "
+            "[--dry-run] [--git-dir dir] [-h]",
         epilog="""
 Options:
    -f foundation     the foundation name for ops manager (e.g. cml-k8s-n-01)

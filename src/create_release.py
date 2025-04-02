@@ -3,15 +3,9 @@
 import argparse
 import os
 import subprocess
-import sys
-from pathlib import Path
 
-# Add the project root to the Python path
-PROJECT_ROOT = str(Path(__file__).parent.parent)
-sys.path.insert(0, PROJECT_ROOT)
-
-from scripts.release_helper import ReleaseHelper
-from scripts.git_helper import GitHelper
+from pipeline_helpers.git_helper import GitHelper
+from pipeline_helpers.release_helper import ReleaseHelper
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -161,9 +155,12 @@ def main() -> None:
 
         # Ask if user wants to refly the pipeline
         if not args.dry_run:
-            user_input = input(
-                f"Do you want to refly the tkgi-{repo}-{args.foundation} pipeline back to latest code on branch: {branch}? [yN] "
+            pipeline_name = f"tkgi-{repo}-{args.foundation}"
+            prompt = (
+                f"Do you want to refly the {pipeline_name} pipeline "
+                f"back to latest code on branch: {branch}? [yN] "
             )
+            user_input = input(prompt)
             if user_input.lower().startswith("y"):
                 subprocess.run(
                     ["./fly.sh", "-f", args.foundation, "-b", branch],
