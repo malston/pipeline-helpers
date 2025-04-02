@@ -14,7 +14,7 @@ from pipeline_helpers.git_helper import GitHelper
 
 # Import GitHub client conditionally
 try:
-    from voyager.github import GitHubClient
+    from pipeline_helpers.github import GitHubClient
 except ImportError:
     # Mock GitHubClient for testing
     class GitHubClient:
