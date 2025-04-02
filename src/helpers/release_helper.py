@@ -240,7 +240,7 @@ class ReleaseHelper:
             current_version = current_release.name.replace("release-v", "")
 
             self.git_helper.info(
-                f"Updating the params for the tkgi-{self.repo} pipeline "
+                f"Updating the {self.params_repo} for the tkgi-{self.repo} pipeline "
                 f"from {last_version} to {current_version}"
             )
             if not self.git_helper.confirm("Do you want to continue?"):

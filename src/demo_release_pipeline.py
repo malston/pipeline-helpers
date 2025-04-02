@@ -63,6 +63,7 @@ class DemoReleasePipeline:
         self.git_helper = GitHelper(repo=self.repo, repo_dir=self.repo_dir)
         self.release_helper = ReleaseHelper(
             repo=self.repo,
+            repo_dir=self.repo_dir,
             owner=self.owner,
             params_repo=self.params_repo,
             params_dir=self.params_dir,
@@ -731,6 +732,7 @@ Options:
 
     repo_dir = os.path.join(git_dir, args.repo)
     params_dir = os.path.join(git_dir, args.params_repo)
+    params_repo = "params"
 
     # Check if repo ends with the owner
     if args.repo.endswith(args.owner):
@@ -744,6 +746,7 @@ Options:
     if args.owner != "Utilities-tkgieng":
         repo_dir = os.path.join(git_dir, f"{args.repo}-{args.owner}")
         params_dir = os.path.join(git_dir, f"{args.params_repo}-{args.owner}")
+        params_repo = f"{args.params_repo}-{args.owner}"
 
     if not os.path.isdir(repo_dir):
         raise ValueError(f"Could not find repo directory: {repo_dir}")
@@ -754,7 +757,7 @@ Options:
         repo_dir=repo_dir,
         owner=args.owner,
         branch=args.branch,
-        params_repo=args.params_repo,
+        params_repo=params_repo,
         params_dir=params_dir,
         params_branch=args.params_branch,
         release_tag=args.tag,
