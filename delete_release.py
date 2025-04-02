@@ -1,1 +1,0 @@
-src/delete_release.py
