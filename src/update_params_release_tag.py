@@ -71,6 +71,8 @@ def main() -> None:
     # Check if repo ends with the owner
     if args.repo.endswith(args.owner):
         args.repo = args.repo[: -len(args.owner) - 1]
+
+    # Check if params_repo ends with the owner
     if args.params_repo.endswith(args.owner):
         args.params_repo = args.params_repo[: -len(args.owner) - 1]
 
@@ -78,8 +80,11 @@ def main() -> None:
     if args.owner != "Utilities-tkgieng":
         repo_dir = os.path.join(git_dir, f"{repo}-{args.owner}")
         params_dir = os.path.join(git_dir, f"{params_repo}-{args.owner}")
+        params_repo = f"{params_repo}-{args.owner}"
+
     if not os.path.isdir(repo_dir):
         raise ValueError(f"Could not find repo directory: {repo_dir}")
+
     os.chdir(repo_dir)
 
     # Initialize helpers
@@ -88,7 +93,7 @@ def main() -> None:
         repo_dir=repo_dir,
         owner=args.owner,
         params_dir=params_dir,
-        params_repo=f"{params_repo}-{args.owner}",
+        params_repo=params_repo,
     )
     git_helper = GitHelper(repo=repo, repo_dir=repo_dir)
     if not git_helper.check_git_repo():
