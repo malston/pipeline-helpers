@@ -209,12 +209,9 @@ class ReleaseHelper:
 
             # Sort tags by version and get the second-to-last one if available
             sorted_tags = sorted(
-                release_tags,
-                key=lambda t: version.parse(t.name.replace("release-v", ""))
+                release_tags, key=lambda t: version.parse(t.name.replace("release-v", ""))
             )
-            last_release = (
-                sorted_tags[-2] if len(release_tags) > 1 else release_tags[0]
-            )
+            last_release = sorted_tags[-2] if len(release_tags) > 1 else release_tags[0]
             # Use the last tag as the current release
             current_release = sorted_tags[-1]
             last_version = last_release.name.replace("release-v", "")
