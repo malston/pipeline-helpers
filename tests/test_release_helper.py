@@ -5,11 +5,11 @@ import unittest
 from unittest.mock import MagicMock, call, patch
 
 # Using import from package
-from pipeline_helpers.release_helper import ReleaseHelper
+from helpers.release_helper import ReleaseHelper
 
 
 class TestReleaseHelper(unittest.TestCase):
-    @patch("pipeline_helpers.release_helper.GitHelper")
+    @patch("helpers.release_helper.GitHelper")
     def setUp(self, mock_git_helper):
         """Set up test fixtures before each test method."""
         # Setup mock GitHelper instance

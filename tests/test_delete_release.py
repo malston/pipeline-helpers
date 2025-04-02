@@ -5,7 +5,7 @@ import pytest
 
 sys.path.insert(0, "../src")  # This ensures src directory is in path
 
-from pipeline_helpers.release_helper import ReleaseHelper
+from helpers.release_helper import ReleaseHelper
 from src.delete_release import delete_git_tag, main, parse_args, print_available_releases
 
 
@@ -96,8 +96,8 @@ def test_delete_git_tag():
     ],
 )
 def test_repo_name_construction(input_args, expected_repo):
-    with patch("pipeline_helpers.git_helper.GitHelper") as mock_git_helper, patch(
-        "pipeline_helpers.release_helper.ReleaseHelper"
+    with patch("helpers.git_helper.GitHelper") as mock_git_helper, patch(
+        "helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(
@@ -123,8 +123,8 @@ def test_repo_name_construction(input_args, expected_repo):
 
 
 def test_release_not_found():
-    with patch("pipeline_helpers.git_helper.GitHelper") as mock_git_helper, patch(
-        "pipeline_helpers.release_helper.ReleaseHelper"
+    with patch("helpers.git_helper.GitHelper") as mock_git_helper, patch(
+        "helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(
@@ -149,8 +149,8 @@ def test_release_not_found():
 
 
 def test_no_releases_found():
-    with patch("pipeline_helpers.git_helper.GitHelper") as mock_git_helper, patch(
-        "pipeline_helpers.release_helper.ReleaseHelper"
+    with patch("helpers.git_helper.GitHelper") as mock_git_helper, patch(
+        "helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(
@@ -174,8 +174,8 @@ def test_no_releases_found():
 
 
 def test_successful_deletion():
-    with patch("pipeline_helpers.git_helper.GitHelper") as mock_git_helper, patch(
-        "pipeline_helpers.release_helper.ReleaseHelper"
+    with patch("helpers.git_helper.GitHelper") as mock_git_helper, patch(
+        "helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(
@@ -200,8 +200,8 @@ def test_successful_deletion():
 
 
 def test_deletion_cancelled():
-    with patch("pipeline_helpers.git_helper.GitHelper") as mock_git_helper, patch(
-        "pipeline_helpers.release_helper.ReleaseHelper"
+    with patch("helpers.git_helper.GitHelper") as mock_git_helper, patch(
+        "helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(

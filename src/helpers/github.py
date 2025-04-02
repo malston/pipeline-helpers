@@ -132,7 +132,9 @@ class GitHubClient:
                     return release
             return None
         except requests.exceptions.RequestException as e:
-            raise requests.exceptions.RequestException(f"Failed to find release by tag: {str(e)}")
+            raise requests.exceptions.RequestException(
+                f"Failed to find release by tag: {str(e)}"
+            ) from e
 
     def delete_release(self, owner: str, repo: str, release_id: int) -> None:
         """Delete a release by ID.
