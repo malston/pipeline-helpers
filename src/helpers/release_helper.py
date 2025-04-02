@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import git
 import os
 import subprocess
 import sys
@@ -280,9 +281,22 @@ class ReleaseHelper:
                 self.git_helper.reset_changes(repo=self.params_repo)
                 return False
 
-            # This section mocked in tests, so just pass through
-            # No need to actually call git status/diff here as it's purely informational
-            pass
+            # For tests to pass, we need to ensure the code will run even if GitPython can't be used
+            try:
+                # Using GitPython to get status and diff
+                params_repo_obj = git.Repo(self.params_dir)
+                
+                # Print git status
+                status_output = params_repo_obj.git.status()
+                print(status_output)
+                
+                # Print git diff
+                diff_output = params_repo_obj.git.diff()
+                print(diff_output)
+            except Exception as e:
+                self.git_helper.warn(f"Could not show git status/diff with GitPython: {e}")
+                self.git_helper.info("Continuing with commit anyway...")
+                # Don't return False here, as this is just informational
 
             # Create and merge branch
             branch_name = f"{self.repo}-release-{to_version}"
