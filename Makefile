@@ -1,10 +1,13 @@
 # Makefile for pipeline-helpers development
 
-.PHONY: setup venv install dev test lint format clean build publish activate security check-env update-tools install-package help
+.PHONY: setup venv install dev test lint format clean build build-wheel build-sdist publish activate security check-env update-tools install-package help install-script
 
 PYTHON_VERSION ?= 3.11
 SRC_DIR = src
 TEST_DIR = tests
+SCRIPT_DIR = scripts
+DIST_DIR = dist
+BUILD_DIR = build
 
 # Detect Python executable (prefer python3 if available)
 PYTHON := $(shell which python3 2>/dev/null || which python 2>/dev/null)
@@ -19,6 +22,9 @@ ifeq ($(PYTHON_IS_3),False)
 $(error Python 3 required but Python 2 detected. Please use Python 3.)
 endif
 
+# Project version from pyproject.toml (using grep and sed)
+VERSION := $(shell grep -m 1 'version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+
 # Default target when just running 'make'
 help:
 	@echo "Available commands:"
@@ -31,7 +37,10 @@ help:
 	@echo "  make lint            - Run linting checks (ruff)"
 	@echo "  make format          - Format code (black)"
 	@echo "  make clean           - Remove build artifacts and cache directories"
-	@echo "  make build           - Build package distribution files"
+	@echo "  make build           - Build package distribution files (wheel and sdist)"
+	@echo "  make build-wheel     - Build wheel package only"
+	@echo "  make build-sdist     - Build source distribution only"
+	@echo "  make install-script  - Create installer script for end users"
 	@echo "  make publish         - Publish package to PyPI (requires credentials)"
 	@echo "  make check-env       - Check if development environment is properly set up"
 	@echo "  make security        - Check dependencies for security vulnerabilities"
@@ -112,12 +121,12 @@ update-tools:
 		exit 1; \
 	fi
 	@if command -v uv >/dev/null 2>&1; then \
-		uv pip install --upgrade pip setuptools wheel || { \
+		uv pip install --upgrade pip setuptools wheel build || { \
 			echo "uv upgrade failed, trying standard pip..."; \
-			. .venv/bin/activate && pip install --upgrade pip setuptools wheel; \
+			. .venv/bin/activate && pip install --upgrade pip setuptools wheel build; \
 		}; \
 	else \
-		. .venv/bin/activate && pip install --upgrade pip setuptools wheel; \
+		. .venv/bin/activate && pip install --upgrade pip setuptools wheel build; \
 	fi
 	@echo "✓ Core tools successfully updated"
 
@@ -172,7 +181,29 @@ clean:
 	@find . -type f -name "*.pyc" -delete
 	@echo "Cleaned"
 
-# Build package distribution files
+# Build package wheel distribution
+build-wheel: clean
+	@echo "Building wheel package..."
+	@if [ -d ".venv" ]; then \
+		. .venv/bin/activate && python -m build --wheel; \
+	else \
+		echo "Virtual environment not found. Please run 'make venv' first."; \
+		exit 1; \
+	fi
+	@echo "Wheel package built. Check the dist/ directory."
+
+# Build source distribution
+build-sdist: clean
+	@echo "Building source distribution package..."
+	@if [ -d ".venv" ]; then \
+		. .venv/bin/activate && python -m build --sdist; \
+	else \
+		echo "Virtual environment not found. Please run 'make venv' first."; \
+		exit 1; \
+	fi
+	@echo "Source distribution built. Check the dist/ directory."
+
+# Build both wheel and source distribution
 build: clean
 	@echo "Building package distribution files..."
 	@if [ -d ".venv" ]; then \
@@ -182,6 +213,15 @@ build: clean
 		exit 1; \
 	fi
 	@echo "Build complete. Distribution files in dist/"
+
+# Create installer script for end users
+install-script: build-wheel
+	@echo "Creating installer script..."
+	@mkdir -p $(DIST_DIR)
+	@cp $(SCRIPT_DIR)/install-pipeline-helpers.sh $(DIST_DIR)/install-pipeline-helpers.sh
+	@sed -i '' 's/\$$(VERSION)/$(VERSION)/g' $(DIST_DIR)/install-pipeline-helpers.sh
+	@echo "Installer script created at $(DIST_DIR)/install-pipeline-helpers.sh"
+	@echo "For distribution to users, include this script along with the wheel file from dist/"
 
 # Publish to PyPI
 publish: build

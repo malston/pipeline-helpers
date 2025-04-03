@@ -25,6 +25,7 @@ classifiers = [
     "Topic :: Software Development :: Version Control :: Git",
 ]
 dependencies = [
+    "build>=1.0.0",
     "click>=8.0.0",
     "gitpython>=3.1.0",
     "requests>=2.25.0",
