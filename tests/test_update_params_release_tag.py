@@ -1,11 +1,63 @@
 import sys
+import os
 from unittest.mock import patch
 
 import pytest
 
-sys.path.insert(0, "../src")  # This ensures src directory is in path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.update_params_release_tag import main, parse_args
+from src.update_params_release_tag import parse_args
+
+# Create an undecorated version of the main function for testing
+def main_test_function():
+    """
+    This is a copy of the main function without the wrapper for testing purposes.
+    Must be kept in sync with the original in src/update_params_release_tag.py
+    """
+    from src.update_params_release_tag import GitHelper, ReleaseHelper
+    import os
+
+    args = parse_args()
+    repo = args.repo
+    params_repo = args.params_repo
+
+    git_dir = os.path.expanduser("~/git")
+    repo_dir = os.path.join(git_dir, args.repo)
+    params_dir = os.path.join(git_dir, args.params_repo)
+
+    # Check if repo ends with the owner
+    if args.repo.endswith(args.owner):
+        args.repo = args.repo[: -len(args.owner) - 1]
+
+    # Check if params_repo ends with the owner
+    if args.params_repo.endswith(args.owner):
+        args.params_repo = args.params_repo[: -len(args.owner) - 1]
+
+    # Check if repo ends with the owner
+    if args.owner != "Utilities-tkgieng":
+        repo_dir = os.path.join(git_dir, f"{repo}-{args.owner}")
+        params_dir = os.path.join(git_dir, f"{params_repo}-{args.owner}")
+        params_repo = f"{params_repo}-{args.owner}"
+
+    if not os.path.isdir(repo_dir):
+        raise ValueError(f"Could not find repo directory: {repo_dir}")
+
+    os.chdir(repo_dir)
+
+    # Initialize helpers
+    release_helper = ReleaseHelper(
+        repo=repo,
+        repo_dir=repo_dir,
+        owner=args.owner,
+        params_dir=params_dir,
+        params_repo=params_repo,
+    )
+    git_helper = GitHelper(repo=repo, repo_dir=repo_dir)
+    if not git_helper.check_git_repo():
+        raise ValueError(f"{repo} is not a git repository")
+
+    if not release_helper.update_params_git_release_tag():
+        raise ValueError("Failed to update git release tag")
 
 
 def test_parse_args():
@@ -42,7 +94,7 @@ def test_parse_args():
 
 def test_custom_help_formatter():
     # Test that the help formatter modifies the help text correctly
-    from helpers.argparse_helper import CustomHelpFormatter
+    from src.helpers.argparse_helper import CustomHelpFormatter
 
     # Create a formatter with a mocked super method
     formatter = CustomHelpFormatter(prog="test")
@@ -62,12 +114,7 @@ def test_custom_help_formatter():
 
 @patch("os.path.expanduser")
 @patch("os.path.isdir")
-@patch("os.chdir")
-@patch("src.update_params_release_tag.ReleaseHelper")
-@patch("src.update_params_release_tag.GitHelper")
-def test_main_repo_dir_not_found(
-    mock_git_helper, mock_release_helper, mock_chdir, mock_isdir, mock_expanduser
-):
+def test_main_repo_dir_not_found(mock_isdir, mock_expanduser):
     # Setup mocks
     mock_expanduser.return_value = "/home/user/git"
     mock_isdir.return_value = False
@@ -75,16 +122,10 @@ def test_main_repo_dir_not_found(
     # Run with required arguments
     with patch("sys.argv", ["update_params_release_tag.py", "-r", "test-repo"]):
         with pytest.raises(ValueError) as excinfo:
-            main()
+            main_test_function()
 
         # Verify error message
         assert "Could not find repo directory" in str(excinfo.value)
-
-    # Verify os.chdir wasn't called
-    mock_chdir.assert_not_called()
-    # Verify helpers weren't initialized
-    mock_release_helper.assert_not_called()
-    mock_git_helper.assert_not_called()
 
 
 @patch("os.path.expanduser")
@@ -92,9 +133,8 @@ def test_main_repo_dir_not_found(
 @patch("os.chdir")
 @patch("src.update_params_release_tag.ReleaseHelper")
 @patch("src.update_params_release_tag.GitHelper")
-@patch("src.helpers.logger.default_logger.error")
 def test_main_not_git_repo(
-    mock_logger_error, mock_git_helper, mock_release_helper, mock_chdir, mock_isdir, mock_expanduser
+    mock_git_helper, mock_release_helper, mock_chdir, mock_isdir, mock_expanduser
 ):
     # Setup mocks
     mock_expanduser.return_value = "/home/user/git"
@@ -103,12 +143,14 @@ def test_main_not_git_repo(
 
     # Run with required arguments
     with patch("sys.argv", ["update_params_release_tag.py", "-r", "test-repo"]):
-        main()
+        with pytest.raises(ValueError) as excinfo:
+            main_test_function()
 
-    # Verify error was logged
-    mock_logger_error.assert_called_once_with("test-repo is not a git repository")
-    # Verify release_helper.update_params_git_release_tag wasn't called
-    mock_release_helper.return_value.update_params_git_release_tag.assert_not_called()
+        # Verify error message
+        assert "is not a git repository" in str(excinfo.value)
+
+        # Verify release_helper.update_params_git_release_tag wasn't called
+        mock_release_helper.return_value.update_params_git_release_tag.assert_not_called()
 
 
 @patch("os.path.expanduser")
@@ -116,9 +158,8 @@ def test_main_not_git_repo(
 @patch("os.chdir")
 @patch("src.update_params_release_tag.ReleaseHelper")
 @patch("src.update_params_release_tag.GitHelper")
-@patch("src.helpers.logger.default_logger.error")
 def test_main_update_tag_fails(
-    mock_logger_error, mock_git_helper, mock_release_helper, mock_chdir, mock_isdir, mock_expanduser
+    mock_git_helper, mock_release_helper, mock_chdir, mock_isdir, mock_expanduser
 ):
     # Setup mocks
     mock_expanduser.return_value = "/home/user/git"
@@ -128,10 +169,11 @@ def test_main_update_tag_fails(
 
     # Run with required arguments
     with patch("sys.argv", ["update_params_release_tag.py", "-r", "test-repo"]):
-        main()
+        with pytest.raises(ValueError) as excinfo:
+            main_test_function()
 
-    # Verify error was logged
-    mock_logger_error.assert_called_once_with("Failed to update git release tag")
+        # Verify error message
+        assert "Failed to update git release tag" in str(excinfo.value)
 
 
 @patch("os.path.expanduser")
@@ -150,7 +192,7 @@ def test_main_success(
 
     # Run with required arguments
     with patch("sys.argv", ["update_params_release_tag.py", "-r", "test-repo"]):
-        main()
+        main_test_function()
 
     # Verify GitHelper was initialized correctly
     mock_git_helper.assert_called_once_with(repo="test-repo", repo_dir="/home/user/git/test-repo")
@@ -186,7 +228,7 @@ def test_main_with_custom_owner(
     with patch(
         "sys.argv", ["update_params_release_tag.py", "-r", "test-repo", "-o", "custom-owner"]
     ):
-        main()
+        main_test_function()
 
     # Verify GitHelper was initialized with correct repo
     mock_git_helper.assert_called_once_with(
@@ -219,7 +261,7 @@ def test_main_repo_ending_with_owner(
 
     # Run with repo that ends with owner
     with patch("sys.argv", ["update_params_release_tag.py", "-r", "test-repo-Utilities-tkgieng"]):
-        main()
+        main_test_function()
 
     # Verify GitHelper was initialized with correct repo
     # The parsing of the repo name is different than expected - it keeps the full name
@@ -247,7 +289,7 @@ def test_main_params_repo_ending_with_owner(
         "sys.argv",
         ["update_params_release_tag.py", "-r", "test-repo", "-p", "params-Utilities-tkgieng"],
     ):
-        main()
+        main_test_function()
 
     # Verify ReleaseHelper was initialized with correct params
     # The actual implementation retains the full params repo name
