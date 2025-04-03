@@ -188,33 +188,24 @@ class DemoReleasePipeline:
         self, repo: str, owner: str, tag: str, non_interactive: bool = False
     ) -> None:
         """Delete a GitHub release."""
-        if not non_interactive:
-            response = input(f"Do you want to delete github release: {tag}? [yN] ")
-            if not response.lower().startswith("y"):
-                return
 
         try:
             # Get all releases to find the one with matching tag
-            releases = self.release_helper.get_releases()
+            release = self.release_helper.get_github_release_by_tag(tag)
         except (ConnectionError, ValueError, RuntimeError, IOError) as e:
             logger.error(f"Error fetching releases: {str(e)}")
             return
 
-        if not releases:
-            logger.info("No releases found")
+        if not release:
             return
 
-        try:
-            release_id = None
-            for release in releases:
-                if release["tag_name"] == tag:
-                    release_id = release["id"]
-                    break
+        release_id = release.get("id")
 
-            if not release_id:
-                logger.error(f"Release with tag {tag} not found")
+        if not non_interactive:
+            response = input(f"Do you want to delete github release: {tag}? [yN] ")
+            if not response.lower().startswith("y"):
                 return
-
+        try:
             if self.dry_run:
                 logger.info(
                     f"[DRY RUN] Would delete GitHub release {tag} for {owner}/{repo} "
@@ -577,7 +568,7 @@ class DemoReleasePipeline:
             logger.error("Failed to get latest release tag")
             return
 
-        # Delete GitHub release if requested
+        # Delete GitHub release if requested and a release is found
         self.delete_github_release(self.repo, self.owner, self.release_tag)
 
         # Handle version checking and potential reversion

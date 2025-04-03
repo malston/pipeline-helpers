@@ -71,14 +71,14 @@ Options:
 
 
 def delete_git_tag(
-    git_helper: GitHelper, release_helper: ReleaseHelper, tag: str, args: argparse.Namespace
+    git_helper: GitHelper, release_helper: ReleaseHelper, tag: str, non_interactive: bool = False
 ) -> None:
     """Delete a git tag with user confirmation if needed."""
     if not git_helper.tag_exists(tag):
         logger.error(f"Git tag {tag} not found in repository")
         return
 
-    if not args.non_interactive:
+    if not non_interactive:
         user_input = input(f"Would you like to delete the git tag: {tag}? [yN] ")
         if not user_input.lower().startswith("y"):
             return
@@ -116,16 +116,16 @@ def main() -> None:
     release = release_helper.get_github_release_by_tag(args.release_tag)
 
     if not release:
-        logger.error(f"Release {args.release_tag} not found")
         releases = release_helper.get_releases()
         if not releases:
             logger.info("No releases found")
             if not args.no_tag_deletion:
-                delete_git_tag(git_helper, release_helper, args.release_tag, args)
+                delete_git_tag(git_helper, release_helper, args.release_tag, args.non_interactive)
             return
+        logger.error(f"Release {args.release_tag} not found")
         print_available_releases(releases)
         if not args.no_tag_deletion:
-            delete_git_tag(git_helper, release_helper, args.release_tag, args)
+            delete_git_tag(git_helper, release_helper, args.release_tag, args.non_interactive)
         return
 
     if not args.non_interactive:
@@ -135,11 +135,13 @@ def main() -> None:
         if not user_input.lower().startswith("y"):
             return
 
-    if not release_helper.delete_github_release(args.release_tag):
+    if not release_helper.delete_github_release(release.get("id")):
         logger.error("Failed to delete GitHub release")
 
     if not args.no_tag_deletion:
-        delete_git_tag(git_helper, release_helper, args.release_tag, args)
+        delete_git_tag(git_helper, release_helper, args.release_tag, args.non_interactive)
+
+    logger.info(f"Deleted GitHub release: {args.release_tag}")
 
 
 if __name__ == "__main__":

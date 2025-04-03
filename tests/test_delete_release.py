@@ -57,36 +57,35 @@ def test_delete_git_tag():
     mock_git_helper = MagicMock()
     mock_git_helper.tag_exists = MagicMock()
     mock_release_helper = MagicMock(spec=ReleaseHelper)
-    mock_args = MagicMock()
-    mock_args.non_interactive = False
-    mock_args.no_tag_deletion = False
+
+    non_interactive = False
     tag = "v1.0.0"
 
     # Test when tag exists and user confirms
     mock_git_helper.tag_exists.return_value = True
     with patch("builtins.input", return_value="y"):
-        delete_git_tag(mock_git_helper, mock_release_helper, tag, mock_args)
+        delete_git_tag(mock_git_helper, mock_release_helper, tag, non_interactive)
         mock_release_helper.delete_release_tag.assert_called_once_with(tag)
 
     # Test when tag exists but user cancels
     mock_release_helper.reset_mock()
     with patch("builtins.input", return_value="n"):
-        delete_git_tag(mock_git_helper, mock_release_helper, tag, mock_args)
+        delete_git_tag(mock_git_helper, mock_release_helper, tag, non_interactive)
         mock_release_helper.delete_release_tag.assert_not_called()
 
     # Test when tag doesn't exist
     mock_git_helper.tag_exists.return_value = False
     with patch("src.helpers.logger.default_logger.error") as mock_logger_error:
-        delete_git_tag(mock_git_helper, mock_release_helper, tag, mock_args)
+        delete_git_tag(mock_git_helper, mock_release_helper, tag, non_interactive)
         mock_release_helper.delete_release_tag.assert_not_called()
         mock_logger_error.assert_called_once_with(f"Git tag {tag} not found in repository")
 
     # Test in non-interactive mode
-    mock_args.non_interactive = True
+    non_interactive = True
     mock_git_helper.tag_exists.return_value = True
     mock_git_helper.reset_mock()
     mock_release_helper.reset_mock()
-    delete_git_tag(mock_git_helper, mock_release_helper, tag, mock_args)
+    delete_git_tag(mock_git_helper, mock_release_helper, tag, non_interactive)
     mock_release_helper.delete_release_tag.assert_called_once_with(tag)
 
 
@@ -187,11 +186,13 @@ def test_successful_deletion():
     ), patch(
         "src.delete_release.ReleaseHelper", mock_release_helper
     ):
-
-        mock_git_helper.return_value.check_git_repo.return_value = True
-        mock_release_helper.return_value.get_github_release_by_tag.return_value = {
-            "tag_name": "v1.0.0"
+        mock_release = {
+            "tag_name": "v1.0.0",
+            "name": "Release 1.0.0",
+            "id": 12345,
         }
+        mock_git_helper.return_value.check_git_repo.return_value = True
+        mock_release_helper.return_value.get_github_release_by_tag.return_value = mock_release
         mock_release_helper.return_value.delete_github_release.return_value = True
         mock_git_helper.return_value.tag_exists.return_value = True
 
@@ -201,7 +202,7 @@ def test_successful_deletion():
             # Run main without storing args
             main()
 
-            mock_release_helper.return_value.delete_github_release.assert_called_once_with("v1.0.0")
+            mock_release_helper.return_value.delete_github_release.assert_called_once_with(mock_release.get("id"))
             mock_release_helper.return_value.delete_release_tag.assert_called_once_with("v1.0.0")
 
 
