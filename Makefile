@@ -1,6 +1,6 @@
 # Makefile for pipeline-helpers development
 
-.PHONY: setup venv install dev test lint format clean build publish activate security check-env help
+.PHONY: setup venv install dev test lint format clean build publish activate security check-env update-tools install-package help
 
 PYTHON_VERSION ?= 3.11
 SRC_DIR = src
@@ -22,19 +22,21 @@ endif
 # Default target when just running 'make'
 help:
 	@echo "Available commands:"
-	@echo "  make setup     - Check Python environment and development tools"
-	@echo "  make venv      - Create a virtual environment (uses uv if available)"
-	@echo "  make install   - Install dependencies and package in development mode"
-	@echo "  make dev       - Complete development setup (venv + install)"
-	@echo "  make activate  - Show instructions to activate virtual environment"
-	@echo "  make test      - Run tests"
-	@echo "  make lint      - Run linting checks (ruff)"
-	@echo "  make format    - Format code (black)"
-	@echo "  make clean     - Remove build artifacts and cache directories"
-	@echo "  make build     - Build package distribution files"
-	@echo "  make publish   - Publish package to PyPI (requires credentials)"
-	@echo "  make check-env - Check if development environment is properly set up"
-	@echo "  make security  - Check dependencies for security vulnerabilities"
+	@echo "  make setup       - Check Python environment and development tools"
+	@echo "  make venv        - Create a virtual environment (uses uv if available)"
+	@echo "  make install     - Install dependencies and package in development mode"
+	@echo "  make dev         - Complete development setup (venv + install)"
+	@echo "  make activate    - Show instructions to activate virtual environment"
+	@echo "  make test        - Run tests"
+	@echo "  make lint        - Run linting checks (ruff)"
+	@echo "  make format      - Format code (black)"
+	@echo "  make clean       - Remove build artifacts and cache directories"
+	@echo "  make build       - Build package distribution files"
+	@echo "  make publish     - Publish package to PyPI (requires credentials)"
+	@echo "  make check-env   - Check if development environment is properly set up"
+	@echo "  make security    - Check dependencies for security vulnerabilities"
+	@echo "  make update-tools - Update pip, setuptools, and wheel to latest versions"
+	@echo "  make install-package - Install the published pipeline-helpers package"
 
 # Set up the development environment with pythonenv and uv
 setup:
@@ -102,8 +104,25 @@ install:
 	fi
 	@echo "✓ Installation complete"
 
+# Update pip, setuptools, and wheel to latest versions
+update-tools:
+	@echo "Updating pip, setuptools, and wheel to latest versions..."
+	@if [ ! -d ".venv" ]; then \
+		echo "Virtual environment not found. Please run 'make venv' first."; \
+		exit 1; \
+	fi
+	@if command -v uv >/dev/null 2>&1; then \
+		uv pip install --upgrade pip setuptools wheel || { \
+			echo "uv upgrade failed, trying standard pip..."; \
+			. .venv/bin/activate && pip install --upgrade pip setuptools wheel; \
+		}; \
+	else \
+		. .venv/bin/activate && pip install --upgrade pip setuptools wheel; \
+	fi
+	@echo "✓ Core tools successfully updated"
+
 # Complete development setup
-dev: venv install
+dev: venv update-tools install
 	@echo "Development environment setup complete"
 	@make activate
 
@@ -136,7 +155,7 @@ format:
 	fi
 
 # Run tests
-test: dev
+test:
 	@echo "Running tests..."
 	@if [ -d ".venv" ]; then \
 		. .venv/bin/activate && python -m pytest $(TEST_DIR) -v; \
@@ -219,3 +238,20 @@ security:
 		echo "Virtual environment not found. Please run 'make venv' first."; \
 		exit 1; \
 	fi
+
+# Install the published pipeline-helpers package
+install-package:
+	@echo "Installing pipeline-helpers package from PyPI..."
+	@if [ ! -d ".venv" ]; then \
+		echo "Virtual environment not found. Creating one first..."; \
+		make venv; \
+	fi
+	@if command -v uv >/dev/null 2>&1; then \
+		uv pip install pipeline-helpers || { \
+			echo "uv installation failed, trying standard pip..."; \
+			. .venv/bin/activate && pip install pipeline-helpers; \
+		}; \
+	else \
+		. .venv/bin/activate && pip install pipeline-helpers; \
+	fi
+	@echo "✓ pipeline-helpers package successfully installed"
