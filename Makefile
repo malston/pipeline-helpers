@@ -255,3 +255,33 @@ install-package:
 		. .venv/bin/activate && pip install pipeline-helpers; \
 	fi
 	@echo "✓ pipeline-helpers package successfully installed"
+
+executable:
+	@echo "Creating executable scripts..."
+	@if [ ! -d ".venv" ]; then \
+		echo "Virtual environment not found. Please run 'make venv' first."; \
+		exit 1; \
+	fi
+	@if ! command -v pyinstaller >/dev/null 2>&1; then \
+		echo "pyinstaller not found. Installing it now..."; \
+		if command -v uv >/dev/null 2>&1; then \
+			uv pip install pyinstaller || { \
+				echo "uv installation failed, trying standard pip..."; \
+				. .venv/bin/activate && pip install pyinstaller; \
+			}; \
+		else \
+			. .venv/bin/activate && pip install pyinstaller || { \
+				echo "Failed to install pyinstaller. Please check your environment."; \
+				exit 1; \
+			}; \
+		fi \
+	fi
+	@echo "Creating executables..."
+	@for script in create_release delete_release rollback_release update_params_release_tag demo_release_pipeline; do \
+		. .venv/bin/activate && pyinstaller --onefile src/$$script.py || { \
+			echo "Failed to create executable for $$script.py"; \
+			exit 1; \
+		}; \
+	done
+	@cp dist/* ~/.local/bin/
+	@echo "✓ All executables created successfully"
