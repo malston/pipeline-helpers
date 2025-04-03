@@ -76,9 +76,10 @@ def test_delete_git_tag():
 
     # Test when tag doesn't exist
     mock_git_helper.tag_exists.return_value = False
-    delete_git_tag(mock_git_helper, mock_release_helper, tag, mock_args)
-    mock_release_helper.delete_release_tag.assert_not_called()
-    mock_git_helper.error.assert_called_once_with(f"Git tag {tag} not found in repository")
+    with patch("helpers.logger.default_logger.error") as mock_logger_error:
+        delete_git_tag(mock_git_helper, mock_release_helper, tag, mock_args)
+        mock_release_helper.delete_release_tag.assert_not_called()
+        mock_logger_error.assert_called_once_with(f"Git tag {tag} not found in repository")
 
     # Test in non-interactive mode
     mock_args.non_interactive = True
@@ -130,7 +131,9 @@ def test_release_not_found():
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(
         "src.delete_release.ReleaseHelper", mock_release_helper
-    ):
+    ), patch(
+        "helpers.logger.default_logger.error"
+    ) as mock_logger_error:
 
         mock_git_helper.return_value.check_git_repo.return_value = True
         mock_release_helper.return_value.get_github_release_by_tag.return_value = None
@@ -146,7 +149,7 @@ def test_release_not_found():
             # Run main without storing args
             main()
 
-            mock_git_helper.return_value.error.assert_called_once_with("Release v3.0.0 not found")
+            mock_logger_error.assert_any_call("Release v3.0.0 not found")
 
 
 def test_no_releases_found():
@@ -156,7 +159,9 @@ def test_no_releases_found():
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(
         "src.delete_release.ReleaseHelper", mock_release_helper
-    ):
+    ), patch(
+        "helpers.logger.default_logger.info"
+    ) as mock_logger_info:
 
         mock_git_helper.return_value.check_git_repo.return_value = True
         mock_release_helper.return_value.get_github_release_by_tag.return_value = None
@@ -169,8 +174,8 @@ def test_no_releases_found():
             # Run main without storing args
             main()
 
-            # Check that error was called with "No releases found"
-            mock_git_helper.return_value.info.assert_any_call("No releases found")
+            # Check that info was called with "No releases found"
+            mock_logger_info.assert_any_call("No releases found")
             mock_release_helper.return_value.delete_release_tag.assert_called_once_with("v1.0.0")
 
 
