@@ -4,32 +4,24 @@ import argparse
 import os
 import subprocess
 
+from helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from helpers.git_helper import GitHelper
 from helpers.logger import default_logger as logger
 from helpers.release_helper import ReleaseHelper
 
 
-class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def format_help(self):
-        help_text = super().format_help()
-        # Remove the default options section
-        help_text = help_text.split("\n\n")[0] + "\n\n" + help_text.split("\n\n")[-1]
-        # Change "usage:" to "Usage:"
-        help_text = help_text.replace("usage:", "Usage:")
-        return help_text
-
-
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
+    parser = HelpfulArgumentParser(
         prog="rollback_release.py",
         description="Rollback a release",
         formatter_class=CustomHelpFormatter,
         add_help=False,
-        usage="%(prog)s -f foundation -r release_tag [-p params_repo] [-h]",
+        usage="%(prog)s -f foundation -r release_tag [-o owner] [-p params_repo] [-h]",
         epilog="""
 Options:
    -f foundation    the foundation name for ops manager (e.g. cml-k8s-n-01)
    -r release_tag   the release tag
+   -o owner         the github owner (default: Utilities-tkgieng)
    -p params_repo   the params repo name always located under ~/git (default: params)
    -h               display usage
 """,
@@ -44,6 +36,12 @@ Options:
         "-r",
         "--release",
         required=True,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-o",
+        "--owner",
+        default="Utilities-tkgieng",
         help=argparse.SUPPRESS,
     )
     parser.add_argument(

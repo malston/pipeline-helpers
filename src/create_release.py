@@ -4,27 +4,16 @@ import argparse
 import os
 import subprocess
 
+from helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from helpers.concourse import ConcourseClient
 from helpers.git_helper import GitHelper
 from helpers.logger import default_logger as logger
 from helpers.release_helper import ReleaseHelper
 
 
-class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    """Custom help formatter to modify the help output."""
-
-    def format_help(self):
-        help_text = super().format_help()
-        # Remove the default options section
-        help_text = help_text.split("\n\n")[0] + "\n\n" + help_text.split("\n\n")[-1]
-        # Change "usage:" to "Usage:"
-        help_text = help_text.replace("usage:", "Usage:")
-        return help_text
-
-
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(
+    parser = HelpfulArgumentParser(
         prog="create_release.py",
         description="Create a new release",
         formatter_class=CustomHelpFormatter,
