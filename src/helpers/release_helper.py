@@ -81,12 +81,12 @@ class ReleaseHelper:
         try:
             # Get a repo object
             repo = git.Repo(self.repo_dir)
-            
+
             # Check if there are any tags
             if not repo.tags:
                 logger.error("No release tags found. Make sure to fly the release pipeline.")
                 sys.exit(1)
-            
+
             # Get the most recent tag based on commit date
             tags_with_dates = []
             for tag in repo.tags:
@@ -96,11 +96,11 @@ class ReleaseHelper:
                     tags_with_dates.append((tag, commit_date))
                 except Exception:
                     continue
-                    
+
             if not tags_with_dates:
                 logger.error("No valid release tags found. Make sure to fly the release pipeline.")
                 sys.exit(1)
-                
+
             # Sort by commit date (newest first)
             latest_tag = sorted(tags_with_dates, key=lambda x: x[1], reverse=True)[0][0]
             return latest_tag.name
@@ -199,9 +199,7 @@ class ReleaseHelper:
         except requests.exceptions.RequestException as e:
             logger.warning(f"Failed to find release: {e}")
         if not release_id:
-            logger.warning(
-                f"Release for {self.owner}/{self.repo} with tag {release_tag} not found"
-            )
+            logger.warning(f"Release for {self.owner}/{self.repo} with tag {release_tag} not found")
             return True
         try:
             self.github_client.delete_release(self.owner, self.repo, release_id)
@@ -284,11 +282,11 @@ class ReleaseHelper:
             try:
                 # Using GitPython to get status and diff
                 params_repo_obj = git.Repo(self.params_dir)
-                
+
                 # Print git status
                 status_output = params_repo_obj.git.status()
                 print(status_output)
-                
+
                 # Print git diff
                 diff_output = params_repo_obj.git.diff()
                 print(diff_output)
@@ -343,8 +341,12 @@ class ReleaseHelper:
 
             # Unpause and trigger pipeline using the concourse client
             self.concourse_client.unpause_pipeline("tkgi-pipeline-upgrade", pipeline)
-            self.concourse_client.trigger_job("tkgi-pipeline-upgrade", f"{pipeline}/create-final-release")
-            self.concourse_client.watch_job("tkgi-pipeline-upgrade", f"{pipeline}/create-final-release")
+            self.concourse_client.trigger_job(
+                "tkgi-pipeline-upgrade", f"{pipeline}/create-final-release"
+            )
+            self.concourse_client.watch_job(
+                "tkgi-pipeline-upgrade", f"{pipeline}/create-final-release"
+            )
 
             input("Press enter to continue")
             self.git_helper.pull_all()
@@ -384,7 +386,9 @@ class ReleaseHelper:
 
             # Unpause and trigger pipeline using the concourse client
             self.concourse_client.unpause_pipeline(foundation, pipeline)
-            self.concourse_client.trigger_job(foundation, f"{pipeline}/set-release-pipeline", watch=True)
+            self.concourse_client.trigger_job(
+                foundation, f"{pipeline}/set-release-pipeline", watch=True
+            )
 
             input("Press enter to continue")
             return True
@@ -405,12 +409,12 @@ class ReleaseHelper:
 
         # Use ConcourseClient to find the fly script
         fly_scripts = self.concourse_client.find_fly_script(ci_dir)
-        
+
         # Handle the result based on its type
         if fly_scripts is None:
             logger.error(f"No fly script found in {ci_dir}")
             return
-        
+
         # If a list of scripts was returned, let the user choose one
         if isinstance(fly_scripts, list):
             if len(fly_scripts) == 1:
@@ -426,9 +430,7 @@ class ReleaseHelper:
                         if 1 <= choice <= len(fly_scripts):
                             fly_script = fly_scripts[choice - 1]
                             break
-                        logger.error(
-                            f"Please enter a number between 1 and {len(fly_scripts)}"
-                        )
+                        logger.error(f"Please enter a number between 1 and {len(fly_scripts)}")
                     except ValueError:
                         logger.error("Please enter a valid number")
         else:
@@ -444,7 +446,7 @@ class ReleaseHelper:
         except subprocess.CalledProcessError as e:
             logger.error(f"Fly script failed: {e.cmd}")
             logger.error(f"Exit code: {e.returncode}")
-            if hasattr(e, 'output') and e.output:
+            if hasattr(e, "output") and e.output:
                 logger.error(f"Output: {e.output.decode()}")
             raise
 

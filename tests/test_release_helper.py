@@ -13,14 +13,14 @@ class TestReleaseHelper(unittest.TestCase):
         """Set up test fixtures before each test method."""
         self.patcher1 = patch("helpers.release_helper.GitHelper")
         self.patcher2 = patch("helpers.release_helper.logger")
-        
+
         self.mock_git_helper = self.patcher1.start()
         self.mock_logger = self.patcher2.start()
-        
+
         # Setup mock GitHelper instance
         self.mock_git = self.mock_git_helper.return_value
         self.mock_git.check_git_repo.return_value = True
-        
+
         self.helper = ReleaseHelper(
             repo="test-repo",
             owner="test-owner",
@@ -28,7 +28,7 @@ class TestReleaseHelper(unittest.TestCase):
             repo_dir="/test/repo",
             params_dir="/test/params",
         )
-        
+
     def tearDown(self):
         self.patcher1.stop()
         self.patcher2.stop()

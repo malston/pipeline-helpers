@@ -39,7 +39,9 @@ class ConcourseClient:
             if not os.path.isfile(self.fly_path) or not os.access(self.fly_path, os.X_OK):
                 raise ValueError(f"fly CLI not found at {self.fly_path} or not executable")
 
-    def _run_fly_command(self, args: List[str], cwd: Optional[str] = None, **kwargs) -> subprocess.CompletedProcess:
+    def _run_fly_command(
+        self, args: List[str], cwd: Optional[str] = None, **kwargs
+    ) -> subprocess.CompletedProcess:
         """Run a fly command with the given arguments.
 
         Args:
@@ -131,10 +133,10 @@ class ConcourseClient:
 
         if not fly_scripts:
             return None
-        
+
         if len(fly_scripts) == 1:
             return fly_scripts[0]
-        
+
         # Multiple scripts found - in this case we'll return the first one
         # The caller should handle this situation by prompting the user
         return fly_scripts

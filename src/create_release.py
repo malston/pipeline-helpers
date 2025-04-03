@@ -12,6 +12,7 @@ from helpers.logger import default_logger as logger
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
     """Custom help formatter to modify the help output."""
+
     def format_help(self):
         help_text = super().format_help()
         # Remove the default options section
@@ -85,7 +86,7 @@ Options:
 def main() -> None:
     """Main function to create a new release."""
     args = parse_args()
-    
+
     repo = args.repo
     params_repo = args.params_repo
     release_pipeline = f"tkgi-{repo}-release"
@@ -150,9 +151,9 @@ def main() -> None:
             )
             if user_input.lower().startswith("y"):
                 concourse_client.trigger_job(
-                    args.foundation, 
+                    args.foundation,
                     f"tkgi-{repo}-{args.foundation}/prepare-kustomizations",
-                    watch=True
+                    watch=True,
                 )
         else:
             logger.info(f"Would prompt to run tkgi-{repo}-{args.foundation} pipeline")

@@ -17,7 +17,7 @@ class GitHelper:
         self.repo = repo
         self.repo_dir = repo_dir if repo_dir else os.path.join(self.home, "git", self.repo)
 
-# Logging methods removed - use logger directly
+    # Logging methods removed - use logger directly
 
     def get_repo_info(self, repo: Optional[str] = None) -> Tuple[str, str]:
         """Extract owner and repo name from git remote URL."""
@@ -147,34 +147,34 @@ class GitHelper:
         """Create a new branch, commit changes, and merge it into master."""
         try:
             repo_obj = self._get_repo(repo)
-            
+
             # Create and checkout new branch
             new_branch = repo_obj.create_head(branch_name)
             new_branch.checkout()
-            
+
             # Add all changes
             repo_obj.git.add(A=True)
-            
+
             # Commit changes
             repo_obj.index.commit(commit_message)
-            
+
             # Checkout master branch
             master = repo_obj.heads.master
             master.checkout()
-            
+
             # Pull latest changes from origin/master
             origin = repo_obj.remotes.origin
-            origin.pull('master')
-            
+            origin.pull("master")
+
             # Rebase changes onto master
             repo_obj.git.rebase(branch_name)
-            
+
             # Push to remote
-            origin.push('master')
-            
+            origin.push("master")
+
             # Delete the branch
             repo_obj.delete_head(branch_name, force=True)
-            
+
             return True
         except Exception as e:
             logger.error(f"Failed to create and merge branch: {e}")
@@ -184,14 +184,14 @@ class GitHelper:
         """Create and push a git tag."""
         try:
             repo_obj = self._get_repo(repo)
-            
+
             # Create tag
             repo_obj.create_tag(tag_name, message=tag_message)
-            
+
             # Push tag to remote
             origin = repo_obj.remotes.origin
             origin.push(tag_name)
-            
+
             return True
         except Exception as e:
             logger.error(f"Failed to create and push tag: {e}")
