@@ -202,7 +202,9 @@ def test_successful_deletion():
             # Run main without storing args
             main()
 
-            mock_release_helper.return_value.delete_github_release.assert_called_once_with(mock_release.get("id"))
+            mock_release_helper.return_value.delete_github_release.assert_called_once_with(
+                mock_release.get("id")
+            )
             mock_release_helper.return_value.delete_release_tag.assert_called_once_with("v1.0.0")
 
 
