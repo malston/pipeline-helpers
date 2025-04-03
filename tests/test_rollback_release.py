@@ -61,7 +61,7 @@ def test_custom_help_formatter():
 @patch("os.path.exists")
 @patch("os.path.expanduser")
 @patch("os.chdir")
-@patch("helpers.logger.default_logger.error")
+@patch("src.helpers.logger.default_logger.error")
 def test_main_ci_dir_not_found(
     mock_logger_error,
     mock_chdir,
@@ -99,8 +99,8 @@ def test_main_ci_dir_not_found(
 @patch("os.path.exists")
 @patch("os.path.expanduser")
 @patch("os.chdir")
-@patch("helpers.logger.default_logger.error")
-@patch("helpers.logger.default_logger.info")
+@patch("src.helpers.logger.default_logger.error")
+@patch("src.helpers.logger.default_logger.info")
 def test_main_invalid_release_tag(
     mock_logger_info,
     mock_logger_error,
@@ -148,7 +148,7 @@ def test_main_invalid_release_tag(
 @patch("os.path.exists")
 @patch("os.path.expanduser")
 @patch("os.chdir")
-@patch("helpers.logger.default_logger.error")
+@patch("src.helpers.logger.default_logger.error")
 def test_main_set_pipeline_fails(
     mock_logger_error,
     mock_chdir,
@@ -282,7 +282,7 @@ def test_main_trigger_pipeline_user_declines(
 @patch("os.chdir")
 @patch("builtins.input")
 @patch("subprocess.run")
-@patch("helpers.logger.default_logger.error")
+@patch("src.helpers.logger.default_logger.error")
 def test_main_trigger_pipeline_subprocess_error(
     mock_logger_error,
     mock_subprocess_run,
@@ -323,7 +323,7 @@ def test_main_trigger_pipeline_subprocess_error(
 @patch("src.rollback_release.GitHelper")
 @patch("src.rollback_release.ReleaseHelper")
 @patch("os.path.exists")
-@patch("helpers.logger.default_logger.error")
+@patch("src.helpers.logger.default_logger.error")
 def test_main_unexpected_error(
     mock_logger_error, mock_exists, mock_release_helper, mock_git_helper
 ):

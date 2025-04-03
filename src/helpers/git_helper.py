@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import git
 
-from helpers.logger import default_logger as logger
+from src.helpers.logger import default_logger as logger
 
 
 class GitHelper:

@@ -92,7 +92,7 @@ def test_main_repo_dir_not_found(
 @patch("os.chdir")
 @patch("src.update_params_release_tag.ReleaseHelper")
 @patch("src.update_params_release_tag.GitHelper")
-@patch("helpers.logger.default_logger.error")
+@patch("src.helpers.logger.default_logger.error")
 def test_main_not_git_repo(
     mock_logger_error, mock_git_helper, mock_release_helper, mock_chdir, mock_isdir, mock_expanduser
 ):
@@ -116,7 +116,7 @@ def test_main_not_git_repo(
 @patch("os.chdir")
 @patch("src.update_params_release_tag.ReleaseHelper")
 @patch("src.update_params_release_tag.GitHelper")
-@patch("helpers.logger.default_logger.error")
+@patch("src.helpers.logger.default_logger.error")
 def test_main_update_tag_fails(
     mock_logger_error, mock_git_helper, mock_release_helper, mock_chdir, mock_isdir, mock_expanduser
 ):

@@ -6,8 +6,8 @@ import pytest
 
 sys.path.insert(0, "../src")  # This ensures src directory is in path
 
-from helpers.release_helper import ReleaseHelper
 from src.delete_release import delete_git_tag, main, parse_args, print_available_releases
+from src.helpers.release_helper import ReleaseHelper
 
 
 def test_parse_args():
@@ -76,7 +76,7 @@ def test_delete_git_tag():
 
     # Test when tag doesn't exist
     mock_git_helper.tag_exists.return_value = False
-    with patch("helpers.logger.default_logger.error") as mock_logger_error:
+    with patch("src.helpers.logger.default_logger.error") as mock_logger_error:
         delete_git_tag(mock_git_helper, mock_release_helper, tag, mock_args)
         mock_release_helper.delete_release_tag.assert_not_called()
         mock_logger_error.assert_called_once_with(f"Git tag {tag} not found in repository")
@@ -125,14 +125,14 @@ def test_repo_name_construction(input_args, expected_repo):
 
 
 def test_release_not_found():
-    with patch("helpers.git_helper.GitHelper") as mock_git_helper, patch(
-        "helpers.release_helper.ReleaseHelper"
+    with patch("src.helpers.git_helper.GitHelper") as mock_git_helper, patch(
+        "src.helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(
         "src.delete_release.ReleaseHelper", mock_release_helper
     ), patch(
-        "helpers.logger.default_logger.error"
+        "src.helpers.logger.default_logger.error"
     ) as mock_logger_error:
 
         mock_git_helper.return_value.check_git_repo.return_value = True
@@ -153,14 +153,14 @@ def test_release_not_found():
 
 
 def test_no_releases_found():
-    with patch("helpers.git_helper.GitHelper") as mock_git_helper, patch(
-        "helpers.release_helper.ReleaseHelper"
+    with patch("src.helpers.git_helper.GitHelper") as mock_git_helper, patch(
+        "src.helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(
         "src.delete_release.ReleaseHelper", mock_release_helper
     ), patch(
-        "helpers.logger.default_logger.info"
+        "src.helpers.logger.default_logger.info"
     ) as mock_logger_info:
 
         mock_git_helper.return_value.check_git_repo.return_value = True

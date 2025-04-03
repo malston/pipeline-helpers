@@ -11,13 +11,13 @@ import git
 import requests
 from packaging import version
 
-from helpers.concourse import ConcourseClient
-from helpers.git_helper import GitHelper
-from helpers.logger import default_logger as logger
+from src.helpers.concourse import ConcourseClient
+from src.helpers.git_helper import GitHelper
+from src.helpers.logger import default_logger as logger
 
 # Import GitHub client conditionally
 try:
-    from helpers.github import GitHubClient
+    from src.helpers.github import GitHubClient
 except ImportError:
     # Mock GitHubClient for testing
     class GitHubClient:
