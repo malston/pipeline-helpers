@@ -5,10 +5,11 @@ import os
 import re
 import subprocess
 import sys
-from typing import Optional
+from typing import List, Optional
 
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.concourse import ConcourseClient
+from src.helpers.error_handler import wrap_main
 from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
 from src.helpers.release_helper import ReleaseHelper
@@ -182,7 +183,7 @@ class DemoReleasePipeline:
             return result.stdout.strip()
         except subprocess.CalledProcessError as err:
             logger.error(f"No release tags found in {self.repo_dir}.")
-            raise RuntimeError(f"No release tags found in {self.repo_dir}") from err
+            raise ValueError(f"No release tags found in {self.repo_dir}") from err
 
     def delete_github_release(
         self, repo: str, owner: str, tag: str, non_interactive: bool = False
@@ -592,6 +593,7 @@ class DemoReleasePipeline:
         self.refly_pipeline()
 
 
+@wrap_main
 def main():
     """Main function to parse arguments and run the demo release pipeline."""
     parser = HelpfulArgumentParser(
@@ -669,9 +671,6 @@ Options:
         repo_dir = os.path.join(git_dir, f"{args.repo}-{args.owner}")
         params_dir = os.path.join(git_dir, f"{args.params_repo}-{args.owner}")
         params_repo = f"{args.params_repo}-{args.owner}"
-
-    if not os.path.isdir(repo_dir):
-        raise ValueError(f"Could not find repo directory: {repo_dir}")
 
     pipeline = DemoReleasePipeline(
         foundation=args.foundation,
