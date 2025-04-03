@@ -10,11 +10,12 @@ from typing import Optional, Callable
 from src.helpers.logger import default_logger as logger, configure
 
 
-def setup_error_logging(log_file: Optional[str] = None) -> str:
+def setup_error_logging(log_file: Optional[str] = None, console_level: int = logging.INFO) -> str:
     """Set up logging to write to both console and file.
     
     Args:
         log_file: Optional path to log file. If None, a default is used.
+        console_level: Logging level for console output (default: INFO)
         
     Returns:
         The path to the log file
@@ -26,13 +27,43 @@ def setup_error_logging(log_file: Optional[str] = None) -> str:
         timestamp = datetime.now().strftime("%Y%m%d")
         log_file = os.path.join(log_dir, f"pipeline-helpers-{timestamp}.log")
     
-    # Configure the logger to write to both console and file
-    configure(
-        name="pipeline-helpers",
-        level=logging.INFO,
-        log_file=log_file,
-        console=True
-    )
+    # Get the root logger
+    root_logger = logging.getLogger()
+    
+    # Remove any existing handlers to avoid duplicates
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # Set the base logging level
+    root_logger.setLevel(logging.DEBUG)
+    
+    # Create file handler for all detailed logs
+    file_handler = logging.FileHandler(log_file)
+    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_formatter)
+    file_handler.setLevel(logging.DEBUG)
+    root_logger.addHandler(file_handler)
+    
+    # Create console handler with higher level and no error messages
+    # (we'll handle errors separately with colored output)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_formatter = logging.Formatter('%(message)s')
+    console_handler.setFormatter(console_formatter)
+    console_handler.setLevel(console_level)
+    
+    # Add a filter to prevent error messages and stack traces in console
+    class ConsoleFilter(logging.Filter):
+        def filter(self, record):
+            # Skip error messages, stack traces or multi-line messages
+            if record.levelno >= logging.ERROR or \
+               record.getMessage().startswith('Stack trace:') or \
+               record.getMessage().startswith('Error occurred:') or \
+               '\n' in record.getMessage():
+                return False
+            return True
+    
+    console_handler.addFilter(ConsoleFilter())
+    root_logger.addHandler(console_handler)
     
     return log_file
 
@@ -48,21 +79,20 @@ def handle_error(error: Exception, exit_code: int = 1, log_file: Optional[str] =
     # Get the full stack trace
     stack_trace = traceback.format_exc()
     
-    # Set up logging to file
-    log_file = setup_error_logging(log_file)
+    # Set up logging to file only for error handling
+    log_file = setup_error_logging(log_file, console_level=logging.ERROR)
     
-    # Log the error and stack trace
-    logger.error(f"Error occurred: {str(error)}")
-    logger.error(f"Stack trace:\n{stack_trace}")
+    # Log the error and stack trace to file
+    logging.error(f"Error occurred: {str(error)}")
+    logging.error(f"Stack trace:\n{stack_trace}")
     
-    # Display user-friendly message with the error first
     # Using ANSI color codes: Red for "Error:", Yellow for the message, Cyan for log file path
     RED = "\033[31m"
     YELLOW = "\033[33m"
     CYAN = "\033[36m"
     RESET = "\033[0m"
     
-    # Print error message to terminal
+    # Print error message to terminal directly (not through logger)
     print(f"\n{RED}Error:{RESET} {YELLOW}{str(error)}{RESET}\n")
     print(f"See {CYAN}{log_file}{RESET} for detailed information.\n")
     
@@ -91,8 +121,8 @@ def wrap_main(main_func: Callable) -> Callable:
             handle_error(e, log_file=log_file)
         except Exception as e:
             # For other exceptions, still log them but re-raise
-            logger.error(f"Unexpected error: {str(e)}")
-            logger.error(f"Stack trace:\n{traceback.format_exc()}")
+            logging.error(f"Unexpected error: {str(e)}")
+            logging.error(f"Stack trace:\n{traceback.format_exc()}")
             raise
     
     # Preserve the original function's name and docstring

@@ -3,12 +3,12 @@
 import argparse
 import os
 import subprocess
+import logging
 
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.concourse import ConcourseClient
 from src.helpers.error_handler import wrap_main, setup_error_logging
 from src.helpers.git_helper import GitHelper
-from src.helpers.logger import default_logger as logger
 from src.helpers.release_helper import ReleaseHelper
 
 
@@ -86,15 +86,15 @@ def main() -> None:
     # If --log-to-file is specified, set up logging to file
     if args.log_to_file:
         setup_error_logging()
-        logger.info("Logging to file enabled")
+        logging.info("Logging to file enabled")
 
     # Rest of the function remains the same
     repo = args.repo
     params_repo = args.params_repo
     release_pipeline = f"tkgi-{repo}-release"
 
-    logger.info(f"Creating release for repo: {repo}")
-    logger.info(f"Foundation: {args.foundation}")
+    logging.info(f"Creating release for repo: {repo}")
+    logging.info(f"Foundation: {args.foundation}")
     
     if args.owner != "Utilities-tkgieng":
         repo = f"{repo}-{args.owner}"
@@ -115,14 +115,14 @@ def main() -> None:
         raise ValueError(f"CI directory not found at {ci_dir}")
 
     if args.dry_run:
-        logger.info("DRY RUN MODE - No changes will be made")
-        logger.info(f"Would change to directory: {ci_dir}")
+        logging.info("DRY RUN MODE - No changes will be made")
+        logging.info(f"Would change to directory: {ci_dir}")
     else:
         os.chdir(ci_dir)
-        logger.info(f"Changed to directory: {ci_dir}")
+        logging.info(f"Changed to directory: {ci_dir}")
 
     # ... Rest of the function implementation ...
-    logger.info("Release process completed successfully")
+    logging.info("Release process completed successfully")
 
 
 if __name__ == "__main__":
