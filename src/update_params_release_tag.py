@@ -4,6 +4,7 @@ import argparse
 import os
 
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
+from src.helpers.error_handler import wrap_main
 from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
 from src.helpers.release_helper import ReleaseHelper
@@ -48,6 +49,7 @@ Options:
     return parser.parse_args()
 
 
+@wrap_main
 def main() -> None:
     """Main function to update the release tag in the params repo."""
     args = parse_args()
@@ -87,12 +89,10 @@ def main() -> None:
     )
     git_helper = GitHelper(repo=repo, repo_dir=repo_dir)
     if not git_helper.check_git_repo():
-        logger.error(f"{repo} is not a git repository")
-        return
+        raise ValueError(f"{repo} is not a git repository")
 
     if not release_helper.update_params_git_release_tag():
-        logger.error("Failed to update git release tag")
-        return
+        raise ValueError("Failed to update git release tag")
 
 
 if __name__ == "__main__":
