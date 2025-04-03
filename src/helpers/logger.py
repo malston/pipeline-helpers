@@ -173,7 +173,8 @@ def get_logger(
 
     Args:
         name: The name of the logger
-        level: The log level (e.g., logging.DEBUG, logging.INFO). If None, uses default_logger's level.
+        level: The log level (e.g., logging.DEBUG, logging.INFO).
+            If None, uses default_logger's level.
         log_file: Optional path to a log file. If None, no file logging.
         console: Whether to log to console. If None, uses default_logger's setting.
 
