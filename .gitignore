@@ -38,6 +38,7 @@ venv.bak/
 .project
 .pydevproject
 .settings/
+.op/
 
 # OS specific files
 .DS_Store
