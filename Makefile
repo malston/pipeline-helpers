@@ -220,6 +220,7 @@ install-script: build-wheel
 	@mkdir -p $(DIST_DIR)
 	@cp $(SCRIPT_DIR)/install-pipeline-helpers.sh $(DIST_DIR)/install-pipeline-helpers.sh
 	@sed -i '' 's/\$$(VERSION)/$(VERSION)/g' $(DIST_DIR)/install-pipeline-helpers.sh
+	@sed -i '' 's/\$$(DIST_DIR)/$(DIST_DIR)/g' $(DIST_DIR)/install-pipeline-helpers.sh
 	@echo "Installer script created at $(DIST_DIR)/install-pipeline-helpers.sh"
 	@echo "For distribution to users, include this script along with the wheel file from dist/"
 

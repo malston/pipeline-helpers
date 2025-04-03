@@ -28,8 +28,8 @@ echo "Downloading pipeline-helpers wheel package..."
 WHEEL_FILE="pipeline_helpers-$(VERSION)-py3-none-any.whl"
 
 # For local installation, copy the wheel instead of downloading
-if [ -f "$(DIST_DIR)/$(WHEEL_FILE)" ]; then
-    cp "$(DIST_DIR)/$(WHEEL_FILE)" "$INSTALL_DIR/wheels/"
+if [ -f "$(DIST_DIR)/${WHEEL_FILE}" ]; then
+    cp "$(DIST_DIR)/${WHEEL_FILE}" "$INSTALL_DIR/wheels/"
 else
     # In a real scenario, you'd download from your hosting location
     echo -e "${RED}Wheel file not found locally.${NC}"
@@ -104,4 +104,3 @@ echo "  - update-params-release-tag"
 echo "  - demo-release-pipeline"
 echo
 echo "If the commands are not available, please add ~/.local/bin to your PATH or restart your terminal."
-EOF
