@@ -69,7 +69,9 @@ mkdir -p "$BIN_DIR"
 
 echo "Creating command wrappers..."
 
-for CMD in create-release delete-release rollback-release update-params-release-tag demo-release-pipeline; do
+mapfile -t COMMANDS < <(find src/ -maxdepth 1 -type f -name "*.py" ! -name "__init__.py" ! -name "helpers.py" -exec basename {} .py \; | sed 's/-/_/g')
+
+for CMD in "${COMMANDS[@]}"; do
     cat > "$BIN_DIR/$CMD" << 'WRAPPER'
 #!/bin/bash
 source "$HOME/.pipeline-helpers/venv/bin/activate"
