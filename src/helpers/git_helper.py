@@ -6,6 +6,8 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import git
 
+from helpers.logger import default_logger as logger
+
 
 class GitHelper:
     """Helper class for git operations used in release pipeline scripts."""
@@ -16,20 +18,20 @@ class GitHelper:
         self.repo_dir = repo_dir if repo_dir else os.path.join(self.home, "git", self.repo)
 
     def info(self, message: str) -> None:
-        """Print an info message."""
-        print(f"\033[0;36m{message}\033[0m")
+        """Log an info message."""
+        logger.info(message)
 
     def error(self, message: str) -> None:
-        """Print an error message."""
-        print(f"\033[0;31m{message}\033[0m")
+        """Log an error message."""
+        logger.error(message)
 
     def warn(self, message: str) -> None:
-        """Print a warning message."""
-        print(f"\033[0;33m{message}\033[0m")
+        """Log a warning message."""
+        logger.warning(message)
 
     def success(self, message: str) -> None:
-        """Print a success message."""
-        print(f"\033[0;32m{message}\033[0m")
+        """Log a success message."""
+        logger.success(message)
 
     def get_repo_info(self, repo: Optional[str] = None) -> Tuple[str, str]:
         """Extract owner and repo name from git remote URL."""

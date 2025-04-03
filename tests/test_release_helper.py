@@ -9,13 +9,18 @@ from helpers.release_helper import ReleaseHelper
 
 
 class TestReleaseHelper(unittest.TestCase):
-    @patch("helpers.release_helper.GitHelper")
-    def setUp(self, mock_git_helper):
+    def setUp(self):
         """Set up test fixtures before each test method."""
+        self.patcher1 = patch("helpers.release_helper.GitHelper")
+        self.patcher2 = patch("helpers.release_helper.logger")
+        
+        self.mock_git_helper = self.patcher1.start()
+        self.mock_logger = self.patcher2.start()
+        
         # Setup mock GitHelper instance
-        self.mock_git = mock_git_helper.return_value
+        self.mock_git = self.mock_git_helper.return_value
         self.mock_git.check_git_repo.return_value = True
-
+        
         self.helper = ReleaseHelper(
             repo="test-repo",
             owner="test-owner",
@@ -23,6 +28,10 @@ class TestReleaseHelper(unittest.TestCase):
             repo_dir="/test/repo",
             params_dir="/test/params",
         )
+        
+    def tearDown(self):
+        self.patcher1.stop()
+        self.patcher2.stop()
 
     def test_update_params_git_release_tag_success(self):
         """Test successful update of params git release tag."""
@@ -82,14 +91,13 @@ class TestReleaseHelper(unittest.TestCase):
         # Setup mock GitHelper instance
         self.mock_git.pull_all.return_value = None
         self.mock_git.get_tags.return_value = []
-        self.mock_git.error.return_value = None
 
         # Execute the method
         result = self.helper.update_params_git_release_tag()
 
         # Verify the result
         self.assertFalse(result)
-        self.mock_git.error.assert_called_once_with("No release tags found")
+        self.mock_logger.error.assert_called_with("No release tags found")
 
     def test_update_params_git_release_tag_uncommitted_changes(self):
         """Test failure when there are uncommitted changes in params repo."""
@@ -105,14 +113,13 @@ class TestReleaseHelper(unittest.TestCase):
 
         self.mock_git.confirm.return_value = True
         self.mock_git.has_uncommitted_changes.return_value = True
-        self.mock_git.error.return_value = None
 
         # Execute the method
         result = self.helper.update_params_git_release_tag()
 
         # Verify the result
         self.assertFalse(result)
-        self.mock_git.error.assert_called_once_with("Please commit or stash your changes to params")
+        self.mock_logger.error.assert_called_with("Please commit or stash your changes to params")
 
     def test_update_params_git_release_tag_user_cancels(self):
         """Test when user cancels the operation."""
@@ -152,14 +159,13 @@ class TestReleaseHelper(unittest.TestCase):
         self.mock_git.update_release_tag_in_params.side_effect = subprocess.SubprocessError(
             "Git error"
         )
-        self.mock_git.error.return_value = None
 
         # Execute the method
         result = self.helper.update_params_git_release_tag()
 
         # Verify the result
         self.assertFalse(result)
-        self.mock_git.error.assert_called_once_with(
+        self.mock_logger.error.assert_called_with(
             "Failed to update release tag in params: Git error"
         )
 

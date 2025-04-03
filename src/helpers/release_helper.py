@@ -13,6 +13,7 @@ from packaging import version
 
 from helpers.git_helper import GitHelper
 from helpers.concourse import ConcourseClient
+from helpers.logger import default_logger as logger
 
 # Import GitHub client conditionally
 try:
@@ -83,7 +84,7 @@ class ReleaseHelper:
             
             # Check if there are any tags
             if not repo.tags:
-                self.git_helper.error("No release tags found. Make sure to fly the release pipeline.")
+                logger.error("No release tags found. Make sure to fly the release pipeline.")
                 sys.exit(1)
             
             # Get the most recent tag based on commit date
@@ -97,14 +98,14 @@ class ReleaseHelper:
                     continue
                     
             if not tags_with_dates:
-                self.git_helper.error("No valid release tags found. Make sure to fly the release pipeline.")
+                logger.error("No valid release tags found. Make sure to fly the release pipeline.")
                 sys.exit(1)
                 
             # Sort by commit date (newest first)
             latest_tag = sorted(tags_with_dates, key=lambda x: x[1], reverse=True)[0][0]
             return latest_tag.name
         except Exception:
-            self.git_helper.error("No release tags found. Make sure to fly the release pipeline.")
+            logger.error("No release tags found. Make sure to fly the release pipeline.")
             sys.exit(1)
 
     def get_latest_release(self) -> str:
@@ -117,34 +118,34 @@ class ReleaseHelper:
         try:
             return self.github_client.get_releases(self.owner, self.repo)
         except requests.exceptions.RequestException as e:
-            self.git_helper.error(f"Error fetching releases: {str(e)}")
+            logger.error(f"Error fetching releases: {str(e)}")
             return None
 
     def validate_release_param(self, param: str) -> bool:
         """Validate a release parameter format."""
         if not param:
-            self.git_helper.error("Error: Parameter is required")
-            self.git_helper.info("Example: release-v1.0.0")
+            logger.error("Error: Parameter is required")
+            logger.info("Example: release-v1.0.0")
             return False
 
         if not param.startswith("release-v"):
-            self.git_helper.error("Error: Parameter must start with 'release-v'")
-            self.git_helper.info("Example: release-v1.0.0")
+            logger.error("Error: Parameter must start with 'release-v'")
+            logger.info("Example: release-v1.0.0")
             return False
 
         version_part = param.replace("release-v", "")
         parts = version_part.split(".")
         if len(parts) != 3:
-            self.git_helper.error("Error: Invalid semantic version format after 'release-v'")
-            self.git_helper.error("The version must follow the MAJOR.MINOR.PATCH format")
-            self.git_helper.info("Example: release-v1.0.0")
+            logger.error("Error: Invalid semantic version format after 'release-v'")
+            logger.error("The version must follow the MAJOR.MINOR.PATCH format")
+            logger.info("Example: release-v1.0.0")
             return False
 
         try:
             # Using _ for unused variables to satisfy linting
             major, minor, patch = map(int, parts)
         except ValueError:
-            self.git_helper.error("Error: Version components must be numbers")
+            logger.error("Error: Version components must be numbers")
             return False
 
         return True
@@ -168,7 +169,7 @@ class ReleaseHelper:
         try:
             return self.github_client.find_release_by_tag(self.owner, self.repo, release_tag)
         except requests.exceptions.RequestException as e:
-            self.git_helper.error(f"Failed to get release by tag: {e}")
+            logger.error(f"Failed to get release by tag: {e}")
             return None
 
     def delete_release_tag(self, release_tag: str) -> bool:
@@ -185,7 +186,7 @@ class ReleaseHelper:
             self.git_helper.delete_tag(release_tag)
             return True
         except requests.exceptions.RequestException as e:
-            self.git_helper.error(f"Failed to delete tag {release_tag}: {e}")
+            logger.error(f"Failed to delete tag {release_tag}: {e}")
             return False
 
     def delete_github_release(self, release_tag: str) -> bool:
@@ -196,9 +197,9 @@ class ReleaseHelper:
             release = self.get_github_release_by_tag(release_tag)
             release_id = release.get("id") if release else None
         except requests.exceptions.RequestException as e:
-            self.git_helper.warn(f"Failed to find release: {e}")
+            logger.warning(f"Failed to find release: {e}")
         if not release_id:
-            self.git_helper.warn(
+            logger.warning(
                 f"Release for {self.owner}/{self.repo} with tag {release_tag} not found"
             )
             return True
@@ -206,7 +207,7 @@ class ReleaseHelper:
             self.github_client.delete_release(self.owner, self.repo, release_id)
             return True
         except requests.exceptions.RequestException as e:
-            self.git_helper.error(f"Failed to delete release: {e}")
+            logger.error(f"Failed to delete release: {e}")
             return False
 
     def get_params_release_tags(self) -> List[str]:
@@ -217,7 +218,7 @@ class ReleaseHelper:
             tags = [tag.name for tag in repo.tags]
             return tags
         except Exception as e:
-            self.git_helper.error(f"Failed to get params release tags: {e}")
+            logger.error(f"Failed to get params release tags: {e}")
             return []
 
     def validate_params_release_tag(self, release_tag: str) -> bool:
@@ -229,7 +230,7 @@ class ReleaseHelper:
         tags = self.get_params_release_tags()
         for tag in tags:
             if tag.startswith(self.repo):
-                self.git_helper.info(f'> {tag.replace(f"{self.repo}-", "")}')
+                logger.info(f'> {tag.replace(f"{self.repo}-", "")}')
 
     def update_params_git_release_tag(self) -> bool:
         """Update the git release tag in params repo."""
@@ -238,7 +239,7 @@ class ReleaseHelper:
             tags = self.git_helper.get_tags()
             release_tags = [t for t in tags if t.name.startswith("release-v")]
             if not release_tags:
-                self.git_helper.error("No release tags found")
+                logger.error("No release tags found")
                 return False
 
             last_release = (
@@ -254,7 +255,7 @@ class ReleaseHelper:
             last_version = last_release.name.replace("release-v", "")
             current_version = current_release.name.replace("release-v", "")
 
-            self.git_helper.info(
+            logger.info(
                 f"Updating the {self.params_repo} for the tkgi-{self.repo} pipeline "
                 f"from {last_version} to {current_version}"
             )
@@ -264,7 +265,7 @@ class ReleaseHelper:
             # Update params repo
             self.git_helper.pull_all(repo=self.params_repo)
             if self.git_helper.has_uncommitted_changes(repo=self.params_repo):
-                self.git_helper.error("Please commit or stash your changes to params")
+                logger.error("Please commit or stash your changes to params")
                 return False
 
             from_version = f"v{last_version}"
@@ -276,7 +277,7 @@ class ReleaseHelper:
                     self.params_repo, self.repo, from_version, to_version
                 )
             except (IOError, OSError, subprocess.SubprocessError) as e:
-                self.git_helper.error(f"Failed to update release tag in params: {e}")
+                logger.error(f"Failed to update release tag in params: {e}")
                 return False
 
             # For tests to pass, we need to ensure the code will run even if GitPython can't be used
@@ -292,8 +293,8 @@ class ReleaseHelper:
                 diff_output = params_repo_obj.git.diff()
                 print(diff_output)
             except (git.exc.GitError, git.exc.InvalidGitRepositoryError, OSError) as e:
-                self.git_helper.warn(f"Could not show git status/diff with GitPython: {e}")
-                self.git_helper.info("Continuing with commit anyway...")
+                logger.warning(f"Could not show git status/diff with GitPython: {e}")
+                logger.info("Continuing with commit anyway...")
                 # Don't return False here, as this is just informational
 
             if not self.git_helper.confirm("Do you want to continue with these commits?"):
@@ -321,7 +322,7 @@ class ReleaseHelper:
 
             return True
         except (IOError, OSError, ValueError, git.exc.GitError) as e:
-            self.git_helper.error(f"Failed to update git release tag: {e}")
+            logger.error(f"Failed to update git release tag: {e}")
             return False
 
     def run_release_pipeline(self, foundation: str, message_body: str = "") -> bool:
@@ -329,7 +330,7 @@ class ReleaseHelper:
         pipeline = f"tkgi-{self.repo}-release"
         if self.owner != "Utilities-tkgieng":
             pipeline = f"tkgi-{self.repo}-{self.owner}-release"
-        self.git_helper.info(f"Running {pipeline} pipeline...")
+        logger.info(f"Running {pipeline} pipeline...")
 
         if not self.git_helper.confirm("Do you want to continue?"):
             return False
@@ -349,7 +350,7 @@ class ReleaseHelper:
             self.git_helper.pull_all()
             return True
         except Exception as e:
-            self.git_helper.error(f"Failed to run release pipeline: {e}")
+            logger.error(f"Failed to run release pipeline: {e}")
             return False
 
     def run_set_pipeline(self, foundation: str) -> bool:
@@ -357,7 +358,7 @@ class ReleaseHelper:
         pipeline = f"tkgi-{self.repo}-{foundation}-set-release-pipeline"
         if self.owner != "Utilities-tkgieng":
             pipeline = f"tkgi-{self.repo}-{self.owner}-{foundation}-set-release-pipeline"
-        self.git_helper.info(f"Running {pipeline} pipeline...")
+        logger.info(f"Running {pipeline} pipeline...")
 
         if not self.git_helper.confirm("Do you want to continue?"):
             return False
@@ -388,7 +389,7 @@ class ReleaseHelper:
             input("Press enter to continue")
             return True
         except Exception as e:
-            self.git_helper.error(f"Failed to run set pipeline: {e}")
+            logger.error(f"Failed to run set pipeline: {e}")
             return False
 
     def run_fly_script(self, args: list) -> None:
@@ -399,7 +400,7 @@ class ReleaseHelper:
         """
         ci_dir = os.path.join(self.repo_dir, "ci")
         if not os.path.isdir(ci_dir):
-            self.git_helper.error(f"CI directory not found at {ci_dir}")
+            logger.error(f"CI directory not found at {ci_dir}")
             return
 
         # Use ConcourseClient to find the fly script
@@ -407,7 +408,7 @@ class ReleaseHelper:
         
         # Handle the result based on its type
         if fly_scripts is None:
-            self.git_helper.error(f"No fly script found in {ci_dir}")
+            logger.error(f"No fly script found in {ci_dir}")
             return
         
         # If a list of scripts was returned, let the user choose one
@@ -415,9 +416,9 @@ class ReleaseHelper:
             if len(fly_scripts) == 1:
                 fly_script = fly_scripts[0]
             else:
-                self.git_helper.info("Multiple fly scripts found. Please choose one:")
+                logger.info("Multiple fly scripts found. Please choose one:")
                 for i, script in enumerate(fly_scripts, 1):
-                    self.git_helper.info(f"{i}. {os.path.basename(script)}")
+                    logger.info(f"{i}. {os.path.basename(script)}")
 
                 while True:
                     try:
@@ -425,11 +426,11 @@ class ReleaseHelper:
                         if 1 <= choice <= len(fly_scripts):
                             fly_script = fly_scripts[choice - 1]
                             break
-                        self.git_helper.error(
+                        logger.error(
                             f"Please enter a number between 1 and {len(fly_scripts)}"
                         )
                     except ValueError:
-                        self.git_helper.error("Please enter a valid number")
+                        logger.error("Please enter a valid number")
         else:
             # Single script path was returned
             fly_script = fly_scripts
@@ -438,13 +439,13 @@ class ReleaseHelper:
             # Use ConcourseClient to run the fly script
             self.concourse_client.run_fly_script(fly_script, args, cwd=ci_dir)
         except ValueError as e:
-            self.git_helper.error(str(e))
+            logger.error(str(e))
             return
         except subprocess.CalledProcessError as e:
-            self.git_helper.error(f"Fly script failed: {e.cmd}")
-            self.git_helper.error(f"Exit code: {e.returncode}")
+            logger.error(f"Fly script failed: {e.cmd}")
+            logger.error(f"Exit code: {e.returncode}")
             if hasattr(e, 'output') and e.output:
-                self.git_helper.error(f"Output: {e.output.decode()}")
+                logger.error(f"Output: {e.output.decode()}")
             raise
 
 

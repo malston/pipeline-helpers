@@ -10,6 +10,7 @@ from typing import Optional
 from helpers.git_helper import GitHelper
 from helpers.release_helper import ReleaseHelper
 from helpers.concourse import ConcourseClient
+from helpers.logger import default_logger as logger
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -108,7 +109,7 @@ class DemoReleasePipeline:
         repo_dir = repo_dir if repo_dir else self.repo_dir
         dry_run = self.dry_run if dry_run is None else dry_run
         if dry_run:
-            self.git_helper.info(f'[DRY RUN] Would run git command: {" ".join(command)}')
+            logger.info(f'[DRY RUN] Would run git command: {" ".join(command)}')
             return None
 
         # Set check=False by default unless overridden in kwargs
@@ -140,16 +141,16 @@ class DemoReleasePipeline:
             version = input("Enter the version you want to revert to: ").strip()
 
             if not self.is_semantic_version(version):
-                self.git_helper.error(f"Invalid version format: {version}")
-                self.git_helper.info("Version must be in semantic version format (e.g., 1.2.3)")
+                logger.error(f"Invalid version format: {version}")
+                logger.info("Version must be in semantic version format (e.g., 1.2.3)")
                 retry = input("Would you like to try again? [yN] ")
                 if not retry.lower().startswith("y"):
                     return None
                 continue
 
             if not self.validate_git_tag(version):
-                self.git_helper.error(f"No git tag found for version: release-v{version}")
-                self.git_helper.info("Available release tags:")
+                logger.error(f"No git tag found for version: release-v{version}")
+                logger.info("Available release tags:")
                 # Show available tags for reference
                 subprocess.run(
                     ["git", "tag", "-l", "|", "sort", "-V", "|", "grep", "release-v*"],
@@ -191,7 +192,7 @@ class DemoReleasePipeline:
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as err:
-            self.git_helper.error(f"No release tags found in {self.repo_dir}.")
+            logger.error(f"No release tags found in {self.repo_dir}.")
             raise RuntimeError(f"No release tags found in {self.repo_dir}") from err
 
     def delete_github_release(
@@ -207,11 +208,11 @@ class DemoReleasePipeline:
             # Get all releases to find the one with matching tag
             releases = self.release_helper.get_releases()
         except (ConnectionError, ValueError, RuntimeError, IOError) as e:
-            self.git_helper.error(f"Error fetching releases: {str(e)}")
+            logger.error(f"Error fetching releases: {str(e)}")
             return
 
         if not releases:
-            self.git_helper.info("No releases found")
+            logger.info("No releases found")
             return
 
         try:
@@ -222,11 +223,11 @@ class DemoReleasePipeline:
                     break
 
             if not release_id:
-                self.git_helper.error(f"Release with tag {tag} not found")
+                logger.error(f"Release with tag {tag} not found")
                 return
 
             if self.dry_run:
-                self.git_helper.info(
+                logger.info(
                     f"[DRY RUN] Would delete GitHub release {tag} for {owner}/{repo} "
                     f"(release_id: {release_id})"
                 )
@@ -234,25 +235,25 @@ class DemoReleasePipeline:
 
             # Delete the release
             if self.release_helper.delete_github_release(release_id):
-                self.git_helper.info(
+                logger.info(
                     f"Successfully deleted GitHub release {tag} for {owner}/{repo}"
                 )
             else:
-                self.git_helper.error(f"Failed to delete GitHub release {tag}")
+                logger.error(f"Failed to delete GitHub release {tag}")
 
         except (ValueError, KeyError, ConnectionError) as e:
-            self.git_helper.error(f"Error deleting GitHub release: {str(e)}")
+            logger.error(f"Error deleting GitHub release: {str(e)}")
 
     def revert_version(self, previous_version: str) -> None:
         """Revert to a previous version."""
-        self.git_helper.info(f"Reverting to version: {previous_version}")
+        logger.info(f"Reverting to version: {previous_version}")
 
         if self.dry_run:
-            self.git_helper.info("[DRY RUN] Would perform the following actions:")
-            self.git_helper.info("1. Checkout and pull version branch")
-            self.git_helper.info(f"2. Update version file to {previous_version}")
-            self.git_helper.info("3. Commit and push changes")
-            self.git_helper.info("4. Recreate release branch")
+            logger.info("[DRY RUN] Would perform the following actions:")
+            logger.info("1. Checkout and pull version branch")
+            logger.info(f"2. Update version file to {previous_version}")
+            logger.info("3. Commit and push changes")
+            logger.info("4. Recreate release branch")
             return
 
         try:
@@ -287,16 +288,16 @@ class DemoReleasePipeline:
             self.run_git_command(["git", "push", "-u", "origin", "release"], check=True)
 
         except subprocess.CalledProcessError as e:
-            self.git_helper.error(f"Git operation failed: {e.cmd}")
-            self.git_helper.error(f"Exit code: {e.returncode}")
+            logger.error(f"Git operation failed: {e.cmd}")
+            logger.error(f"Exit code: {e.returncode}")
             if e.output:
-                self.git_helper.error(f"Output: {e.output.decode()}")
-            self.git_helper.error(
+                logger.error(f"Output: {e.output.decode()}")
+            logger.error(
                 "Version reversion failed. Please check the git status and resolve any issues."
             )
             return
         except Exception as e:
-            self.git_helper.error(f"Unexpected error during version reversion: {str(e)}")
+            logger.error(f"Unexpected error during version reversion: {str(e)}")
             return
 
     def run_fly_script(self, args: list) -> None:
@@ -306,12 +307,12 @@ class DemoReleasePipeline:
             args: List of arguments to pass to fly.sh
         """
         if self.dry_run:
-            self.git_helper.info(f'[DRY RUN] Would run fly.sh with args: {" ".join(args)}')
+            logger.info(f'[DRY RUN] Would run fly.sh with args: {" ".join(args)}')
             return
 
         ci_dir = os.path.join(self.repo_dir, "ci")
         if not os.path.isdir(ci_dir):
-            self.git_helper.error(f"CI directory not found at {ci_dir}")
+            logger.error(f"CI directory not found at {ci_dir}")
             return
 
         # Use ConcourseClient to find the fly script
@@ -319,7 +320,7 @@ class DemoReleasePipeline:
         
         # Handle the result based on its type
         if fly_scripts is None:
-            self.git_helper.error(f"No fly script found in {ci_dir}")
+            logger.error(f"No fly script found in {ci_dir}")
             return
         
         # If a list of scripts was returned, let the user choose one
@@ -327,9 +328,9 @@ class DemoReleasePipeline:
             if len(fly_scripts) == 1:
                 fly_script = fly_scripts[0]
             else:
-                self.git_helper.info("Multiple fly scripts found. Please choose one:")
+                logger.info("Multiple fly scripts found. Please choose one:")
                 for i, script in enumerate(fly_scripts, 1):
-                    self.git_helper.info(f"{i}. {os.path.basename(script)}")
+                    logger.info(f"{i}. {os.path.basename(script)}")
 
                 while True:
                     try:
@@ -337,11 +338,11 @@ class DemoReleasePipeline:
                         if 1 <= choice <= len(fly_scripts):
                             fly_script = fly_scripts[choice - 1]
                             break
-                        self.git_helper.error(
+                        logger.error(
                             f"Please enter a number between 1 and {len(fly_scripts)}"
                         )
                     except ValueError:
-                        self.git_helper.error("Please enter a valid number")
+                        logger.error("Please enter a valid number")
         else:
             # Single script path was returned
             fly_script = fly_scripts
@@ -350,13 +351,13 @@ class DemoReleasePipeline:
             # Use ConcourseClient to run the fly script
             self.concourse_client.run_fly_script(fly_script, args, cwd=ci_dir)
         except ValueError as e:
-            self.git_helper.error(str(e))
+            logger.error(str(e))
             return
         except subprocess.CalledProcessError as e:
-            self.git_helper.error(f"Fly script failed: {e.cmd}")
-            self.git_helper.error(f"Exit code: {e.returncode}")
+            logger.error(f"Fly script failed: {e.cmd}")
+            logger.error(f"Exit code: {e.returncode}")
             if hasattr(e, 'output') and e.output:
-                self.git_helper.error(f"Output: {e.output.decode()}")
+                logger.error(f"Output: {e.output.decode()}")
             raise
 
     def run_release_pipeline(self) -> None:
@@ -366,15 +367,15 @@ class DemoReleasePipeline:
             release_pipeline = f"tkgi-{self.repo}-{self.owner}-release"
 
         if self.dry_run:
-            self.git_helper.info("[DRY RUN] Would perform the following actions:")
-            self.git_helper.info(f"1. Ask to recreate release pipeline: {release_pipeline}")
-            self.git_helper.info("2. Run fly.sh with parameters:")
-            self.git_helper.info(f"   - foundation: {self.foundation}")
-            self.git_helper.info(f"   - release body: {self.release_body}")
-            self.git_helper.info(f"   - owner: {self.owner}")
-            self.git_helper.info(f"   - pipeline: {release_pipeline}")
-            self.git_helper.info(f"3. Ask to run pipeline: {release_pipeline}")
-            self.git_helper.info("4. Update git release tag")
+            logger.info("[DRY RUN] Would perform the following actions:")
+            logger.info(f"1. Ask to recreate release pipeline: {release_pipeline}")
+            logger.info("2. Run fly.sh with parameters:")
+            logger.info(f"   - foundation: {self.foundation}")
+            logger.info(f"   - release body: {self.release_body}")
+            logger.info(f"   - owner: {self.owner}")
+            logger.info(f"   - pipeline: {release_pipeline}")
+            logger.info(f"3. Ask to run pipeline: {release_pipeline}")
+            logger.info("4. Update git release tag")
             return
 
         # Recreate release pipeline if needed
@@ -414,18 +415,18 @@ class DemoReleasePipeline:
         set_release_pipeline = f"{mgmt_pipeline}-set-release-pipeline"
 
         if self.dry_run:
-            self.git_helper.info("[DRY RUN] Would perform the following actions:")
-            self.git_helper.info(f"1. Ask to run pipeline: {set_release_pipeline}")
-            self.git_helper.info("2. Run fly.sh with parameters:")
-            self.git_helper.info(f"   - foundation: {self.foundation}")
-            self.git_helper.info(f"   - set pipeline: {set_release_pipeline}")
-            self.git_helper.info(f"   - branch: {self.branch}")
-            self.git_helper.info(f"   - params branch: {self.params_branch}")
-            self.git_helper.info(f"   - owner: {self.owner}")
-            self.git_helper.info(f"   - pipeline: {mgmt_pipeline}")
-            self.git_helper.info("3. Unpause and trigger set-release-pipeline job")
-            self.git_helper.info(f"4. Ask to run pipeline: {mgmt_pipeline}")
-            self.git_helper.info("5. Unpause and trigger prepare-kustomizations job")
+            logger.info("[DRY RUN] Would perform the following actions:")
+            logger.info(f"1. Ask to run pipeline: {set_release_pipeline}")
+            logger.info("2. Run fly.sh with parameters:")
+            logger.info(f"   - foundation: {self.foundation}")
+            logger.info(f"   - set pipeline: {set_release_pipeline}")
+            logger.info(f"   - branch: {self.branch}")
+            logger.info(f"   - params branch: {self.params_branch}")
+            logger.info(f"   - owner: {self.owner}")
+            logger.info(f"   - pipeline: {mgmt_pipeline}")
+            logger.info("3. Unpause and trigger set-release-pipeline job")
+            logger.info(f"4. Ask to run pipeline: {mgmt_pipeline}")
+            logger.info("5. Unpause and trigger prepare-kustomizations job")
             return
 
         response = input(f"Do you want to run the {set_release_pipeline} pipeline? [yN] ")
@@ -491,12 +492,12 @@ class DemoReleasePipeline:
     def handle_version_reversion(self) -> None:
         """Handle checking current version and potential reversion to an older version."""
         if self.dry_run:
-            self.git_helper.info("[DRY RUN] Would perform the following actions:")
-            self.git_helper.info("1. Checkout and pull version branch")
-            self.git_helper.info("2. Read current version from version file")
-            self.git_helper.info("3. Ask if you want to revert to an older version")
-            self.git_helper.info("4. If yes, validate and prompt for previous version")
-            self.git_helper.info("5. If valid, revert to the specified version")
+            logger.info("[DRY RUN] Would perform the following actions:")
+            logger.info("1. Checkout and pull version branch")
+            logger.info("2. Read current version from version file")
+            logger.info("3. Ask if you want to revert to an older version")
+            logger.info("4. If yes, validate and prompt for previous version")
+            logger.info("5. If valid, revert to the specified version")
             return
 
         try:
@@ -504,15 +505,15 @@ class DemoReleasePipeline:
             self.run_git_command(["git", "checkout", "version"], check=True)
             self.run_git_command(["git", "pull", "-q", "origin", "version"], check=True)
         except subprocess.CalledProcessError as e:
-            self.git_helper.error(f"Git operation failed: {e.cmd}")
-            self.git_helper.error(f"Exit code: {e.returncode}")
+            logger.error(f"Git operation failed: {e.cmd}")
+            logger.error(f"Exit code: {e.returncode}")
             if e.output:
-                self.git_helper.error(f"Output: {e.output.decode()}")
+                logger.error(f"Output: {e.output.decode()}")
             return
 
         version_file = os.path.join(self.repo_dir, "version")
         if not os.path.exists(version_file):
-            self.git_helper.error(f"Version file not found at {version_file}")
+            logger.error(f"Version file not found at {version_file}")
             self.run_git_command(["git", "checkout", self.branch], check=True)
             return
 
@@ -520,7 +521,7 @@ class DemoReleasePipeline:
             with open(version_file, "r", encoding="utf-8") as f:
                 current_version = f.read().strip()
         except Exception as e:
-            self.git_helper.error(f"Error reading version file: {str(e)}")
+            logger.error(f"Error reading version file: {str(e)}")
             self.run_git_command(
                 ["git", "checkout", self.branch],
                 check=True,
@@ -529,7 +530,7 @@ class DemoReleasePipeline:
             )
             return
 
-        self.git_helper.info(f"The current version is: {current_version}")
+        logger.info(f"The current version is: {current_version}")
 
         # Handle version reversion if requested
         response = input("Do you want to revert to an older version? [yN] ")
@@ -538,7 +539,7 @@ class DemoReleasePipeline:
             if previous_version:
                 self.revert_version(previous_version)
             else:
-                self.git_helper.info("Version reversion cancelled")
+                logger.info("Version reversion cancelled")
 
         # Checkout the original branch
         if self.branch == "version":
@@ -562,7 +563,7 @@ class DemoReleasePipeline:
             text=True,
         )
         if result.stdout.strip():
-            self.git_helper.error("Please commit or stash your changes before running this script")
+            logger.error("Please commit or stash your changes before running this script")
             return
 
         # Get current branch if not specified
@@ -577,7 +578,7 @@ class DemoReleasePipeline:
                     capture_output=True,
                 )
                 if result is None:
-                    self.git_helper.error("Failed to get current branch")
+                    logger.error("Failed to get current branch")
                     return
                 # Get the current branch name
                 self.branch = result.stdout.strip()
@@ -590,7 +591,7 @@ class DemoReleasePipeline:
             self.release_tag = self.get_latest_release_tag()
 
         if self.release_tag is None:
-            self.git_helper.error("Failed to get latest release tag")
+            logger.error("Failed to get latest release tag")
             return
 
         # Delete GitHub release if requested
@@ -605,12 +606,12 @@ class DemoReleasePipeline:
         input("Press enter to continue")
 
         if not self.release_helper.update_params_git_release_tag():
-            self.git_helper.error("Failed to update git release tag")
+            logger.error("Failed to update git release tag")
             response = input(
                 "Failed to update params git release tag. Do you want to continue anyway? [yN] "
             )
             if not response.lower().startswith("y"):
-                self.git_helper.info("Exiting the pipeline process.")
+                logger.info("Exiting the pipeline process.")
                 sys.exit(1)
 
         self.run_set_release_pipeline()
