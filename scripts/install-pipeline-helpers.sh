@@ -60,6 +60,8 @@ for CMD in create-release delete-release rollback-release update-params-release-
     cat > "$BIN_DIR/$CMD" << 'WRAPPER'
 #!/bin/bash
 source "$HOME/.pipeline-helpers/venv/bin/activate"
+WRAPPER
+    cat >> "$BIN_DIR/$CMD" <<WRAPPER
 $CMD "\$@"
 deactivate
 WRAPPER
