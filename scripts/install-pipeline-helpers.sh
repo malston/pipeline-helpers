@@ -22,18 +22,31 @@ INSTALL_DIR="$HOME/.pipeline-helpers"
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR/wheels"
 
+VERSION="$(VERSION)"
+DIST_DIR="$(DIST_DIR)"
+
+if [ -z "$VERSION" ]; then
+    VERSION=$(grep -m 1 'version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+fi
+
+if [ -z "$DIST_DIR" ]; then
+    DIST_DIR=dist
+fi
+
 # Download the wheel file
 echo "Downloading pipeline-helpers wheel package..."
-# WHEEL_URL="https://example.com/dist/pipeline_helpers-$(VERSION)-py3-none-any.whl"
-WHEEL_FILE="pipeline_helpers-$(VERSION)-py3-none-any.whl"
+# WHEEL_URL="https://example.com/dist/pipeline_helpers-$VERSION-py3-none-any.whl"
+WHEEL_FILE="pipeline_helpers-$VERSION-py3-none-any.whl"
 
 # For local installation, copy the wheel instead of downloading
-if [ -f "$(DIST_DIR)/${WHEEL_FILE}" ]; then
-    cp "$(DIST_DIR)/${WHEEL_FILE}" "$INSTALL_DIR/wheels/"
+if [ -f "$DIST_DIR/${WHEEL_FILE}" ]; then
+    cp "$DIST_DIR/${WHEEL_FILE}" "$INSTALL_DIR/wheels/"
 else
     # In a real scenario, you'd download from your hosting location
     echo -e "${RED}Wheel file not found locally.${NC}"
     echo "This script is meant to be distributed with the wheel file."
+    echo "Run make install-script to create the wheel file."
+    echo "Then you can execute this script from the dist folder."
     exit 1
 fi
 
