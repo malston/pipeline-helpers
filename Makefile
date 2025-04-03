@@ -136,7 +136,7 @@ format:
 	fi
 
 # Run tests
-test:
+test: dev
 	@echo "Running tests..."
 	@if [ -d ".venv" ]; then \
 		. .venv/bin/activate && python -m pytest $(TEST_DIR) -v; \
