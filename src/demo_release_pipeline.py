@@ -9,6 +9,7 @@ from typing import Optional
 
 from helpers.git_helper import GitHelper
 from helpers.release_helper import ReleaseHelper
+from helpers.concourse import ConcourseClient
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -69,6 +70,7 @@ class DemoReleasePipeline:
             params_dir=self.params_dir,
             token=self.github_token,
         )
+        self.concourse_client = ConcourseClient()
 
         if not self.git_helper.check_git_repo():
             raise ValueError("Repository is not a git repository")
@@ -312,24 +314,16 @@ class DemoReleasePipeline:
             self.git_helper.error(f"CI directory not found at {ci_dir}")
             return
 
-        # Check for FLY_SCRIPT environment variable first
-        fly_script = os.getenv("FLY_SCRIPT")
-        if fly_script:
-            if not os.path.isabs(fly_script):
-                fly_script = os.path.join(ci_dir, fly_script)
-        else:
-            # Look for any script that starts with 'fly'
-            fly_scripts = []
-            for item in os.listdir(ci_dir):
-                if item.startswith("fly"):
-                    script_path = os.path.join(ci_dir, item)
-                    if os.path.isfile(script_path):
-                        fly_scripts.append(script_path)
-
-            if not fly_scripts:
-                self.git_helper.error(f"No fly script found in {ci_dir}")
-                return
-
+        # Use ConcourseClient to find the fly script
+        fly_scripts = self.concourse_client.find_fly_script(ci_dir)
+        
+        # Handle the result based on its type
+        if fly_scripts is None:
+            self.git_helper.error(f"No fly script found in {ci_dir}")
+            return
+        
+        # If a list of scripts was returned, let the user choose one
+        if isinstance(fly_scripts, list):
             if len(fly_scripts) == 1:
                 fly_script = fly_scripts[0]
             else:
@@ -348,17 +342,20 @@ class DemoReleasePipeline:
                         )
                     except ValueError:
                         self.git_helper.error("Please enter a valid number")
-
-        if not os.access(fly_script, os.X_OK):
-            self.git_helper.error(f"Fly script at {fly_script} is not executable")
-            return
+        else:
+            # Single script path was returned
+            fly_script = fly_scripts
 
         try:
-            subprocess.run([fly_script] + args, cwd=ci_dir, check=True)
+            # Use ConcourseClient to run the fly script
+            self.concourse_client.run_fly_script(fly_script, args, cwd=ci_dir)
+        except ValueError as e:
+            self.git_helper.error(str(e))
+            return
         except subprocess.CalledProcessError as e:
             self.git_helper.error(f"Fly script failed: {e.cmd}")
             self.git_helper.error(f"Exit code: {e.returncode}")
-            if e.output:
+            if hasattr(e, 'output') and e.output:
                 self.git_helper.error(f"Output: {e.output.decode()}")
             raise
 
@@ -383,10 +380,9 @@ class DemoReleasePipeline:
         # Recreate release pipeline if needed
         response = input("Do you want to recreate the release pipeline? [yN] ")
         if response.lower().startswith("y"):
-            subprocess.run(
-                ["fly", "-t", "tkgi-pipeline-upgrade", "dp", "-p", release_pipeline, "-n"],
-                check=True,
-            )
+            # Using our ConcourseClient to destroy pipeline
+            cmd = ["-t", "tkgi-pipeline-upgrade", "dp", "-p", release_pipeline, "-n"]
+            self.concourse_client._run_fly_command(cmd)
 
         # Run fly.sh script
         self.run_fly_script(
@@ -405,32 +401,10 @@ class DemoReleasePipeline:
         # Run pipeline if requested
         response = input(f"Do you want to run the {release_pipeline} pipeline? [yN] ")
         if response.lower().startswith("y"):
-            subprocess.run(
-                ["fly", "-t", "tkgi-pipeline-upgrade", "unpause-pipeline", "-p", release_pipeline],
-                check=True,
-            )
-            subprocess.run(
-                [
-                    "fly",
-                    "-t",
-                    "tkgi-pipeline-upgrade",
-                    "trigger-job",
-                    "-j",
-                    f"{release_pipeline}/create-final-release",
-                ],
-                check=True,
-            )
-            subprocess.run(
-                [
-                    "fly",
-                    "-t",
-                    "tkgi-pipeline-upgrade",
-                    "watch",
-                    "-j",
-                    f"{release_pipeline}/create-final-release",
-                ],
-                check=True,
-            )
+            # Using our ConcourseClient to unpause, trigger and watch the pipeline
+            self.concourse_client.unpause_pipeline("tkgi-pipeline-upgrade", release_pipeline)
+            self.concourse_client.trigger_job("tkgi-pipeline-upgrade", f"{release_pipeline}/create-final-release")
+            self.concourse_client.watch_job("tkgi-pipeline-upgrade", f"{release_pipeline}/create-final-release")
 
     def run_set_release_pipeline(self) -> None:
         """Run the set release pipeline."""
@@ -473,40 +447,22 @@ class DemoReleasePipeline:
                 ]
             )
 
-            subprocess.run(
-                ["fly", "-t", self.foundation, "unpause-pipeline", "-p", set_release_pipeline],
-                check=True,
-            )
-            subprocess.run(
-                [
-                    "fly",
-                    "-t",
-                    self.foundation,
-                    "trigger-job",
-                    "-j",
-                    f"{set_release_pipeline}/set-release-pipeline",
-                    "-w",
-                ],
-                check=True,
+            # Using our ConcourseClient to unpause pipeline and trigger job
+            self.concourse_client.unpause_pipeline(self.foundation, set_release_pipeline)
+            self.concourse_client.trigger_job(
+                self.foundation,
+                f"{set_release_pipeline}/set-release-pipeline",
+                watch=True
             )
 
             response = input(f"Do you want to run the {mgmt_pipeline} pipeline? [yN] ")
             if response.lower().startswith("y"):
-                subprocess.run(
-                    ["fly", "-t", self.foundation, "unpause-pipeline", "-p", mgmt_pipeline],
-                    check=True,
-                )
-                subprocess.run(
-                    [
-                        "fly",
-                        "-t",
-                        self.foundation,
-                        "trigger-job",
-                        "-j",
-                        f"{mgmt_pipeline}/prepare-kustomizations",
-                        "-w",
-                    ],
-                    check=True,
+                # Using our ConcourseClient to unpause pipeline and trigger job
+                self.concourse_client.unpause_pipeline(self.foundation, mgmt_pipeline)
+                self.concourse_client.trigger_job(
+                    self.foundation,
+                    f"{mgmt_pipeline}/prepare-kustomizations",
+                    watch=True
                 )
 
     def refly_pipeline(self) -> None:
@@ -524,21 +480,12 @@ class DemoReleasePipeline:
 
             response = input(f"Do you want to rerun the {mgmt_pipeline} pipeline? [yN] ")
             if response.lower().startswith("y"):
-                subprocess.run(
-                    ["fly", "-t", self.foundation, "unpause-pipeline", "-p", mgmt_pipeline],
-                    check=True,
-                )
-                subprocess.run(
-                    [
-                        "fly",
-                        "-t",
-                        self.foundation,
-                        "trigger-job",
-                        "-j",
-                        f"{mgmt_pipeline}/prepare-kustomizations",
-                        "-w",
-                    ],
-                    check=True,
+                # Using our ConcourseClient to unpause pipeline and trigger job
+                self.concourse_client.unpause_pipeline(self.foundation, mgmt_pipeline)
+                self.concourse_client.trigger_job(
+                    self.foundation,
+                    f"{mgmt_pipeline}/prepare-kustomizations",
+                    watch=True
                 )
 
     def handle_version_reversion(self) -> None:
