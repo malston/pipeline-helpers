@@ -6,6 +6,7 @@ import subprocess
 
 from helpers.git_helper import GitHelper
 from helpers.release_helper import ReleaseHelper
+from helpers.concourse import ConcourseClient
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -26,10 +27,11 @@ def parse_args() -> argparse.Namespace:
         description="Create a new release",
         formatter_class=CustomHelpFormatter,
         add_help=False,
-        usage="%(prog)s -f foundation [-m release_body] [-o owner] [-p params_repo] [-h]",
+        usage="%(prog)s -f foundation -r repo [-m release_body] [-o owner] [-p params_repo] [-h]",
         epilog="""
 Options:
    -f foundation    the foundation name for ops manager (e.g. cml-k8s-n-01)
+   -r repo          the repo to use
    -m release_body  the message to apply to the release that is created (optional)
    -o owner         the github owner (default: Utilities-tkgieng)
    -p params_repo   the params repo name always located under ~/git (default: params)
@@ -39,6 +41,12 @@ Options:
     parser.add_argument(
         "-f",
         "--foundation",
+        required=True,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-r",
+        "--repo",
         required=True,
         help=argparse.SUPPRESS,
     )
@@ -76,9 +84,10 @@ Options:
 def main() -> None:
     """Main function to create a new release."""
     args = parse_args()
-    repo = "ns-mgmt"
-    release_pipeline = f"tkgi-{repo}-release"
+    
+    repo = args.repo
     params_repo = args.params_repo
+    release_pipeline = f"tkgi-{repo}-release"
 
     if args.owner != "Utilities-tkgieng":
         repo = f"{repo}-{args.owner}"
@@ -91,6 +100,7 @@ def main() -> None:
         git_helper.error("Git is not installed or not in PATH")
         return
     release_helper = ReleaseHelper(repo=repo, owner=args.owner, params_repo=params_repo)
+    concourse_client = ConcourseClient()
 
     try:
         # Change to the repo's ci directory
@@ -138,17 +148,10 @@ def main() -> None:
                 f"Do you want to run the tkgi-{repo}-{args.foundation} pipeline? [yN] "
             )
             if user_input.lower().startswith("y"):
-                subprocess.run(
-                    [
-                        "fly",
-                        "-t",
-                        args.foundation,
-                        "trigger-job",
-                        "-j",
-                        f"tkgi-{repo}-{args.foundation}/prepare-kustomizations",
-                        "-w",
-                    ],
-                    check=True,
+                concourse_client.trigger_job(
+                    args.foundation, 
+                    f"tkgi-{repo}-{args.foundation}/prepare-kustomizations",
+                    watch=True
                 )
         else:
             git_helper.info(f"Would prompt to run tkgi-{repo}-{args.foundation} pipeline")
@@ -165,11 +168,20 @@ def main() -> None:
             )
             user_input = input(prompt)
             if user_input.lower().startswith("y"):
-                subprocess.run(
-                    ["./fly.sh", "-f", args.foundation, "-b", branch],
-                    input=b"y\n",
-                    check=True,
-                )
+                # Find the fly.sh script in the current directory
+                fly_script = os.path.join(os.getcwd(), "fly.sh")
+                if os.path.isfile(fly_script) and os.access(fly_script, os.X_OK):
+                    # Use ConcourseClient to run the script
+                    try:
+                        subprocess.run(
+                            [fly_script, "-f", args.foundation, "-b", branch],
+                            input=b"y\n",
+                            check=True,
+                        )
+                    except subprocess.CalledProcessError as e:
+                        git_helper.error(f"Failed to run fly.sh: {e}")
+                else:
+                    git_helper.error(f"Fly script not found or not executable at {fly_script}")
         else:
             git_helper.info(f"Would prompt to refly pipeline on branch: {branch}")
 

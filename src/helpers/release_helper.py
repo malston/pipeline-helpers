@@ -12,6 +12,7 @@ import requests
 from packaging import version
 
 from helpers.git_helper import GitHelper
+from helpers.concourse import ConcourseClient
 
 # Import GitHub client conditionally
 try:
@@ -68,6 +69,7 @@ class ReleaseHelper:
         self.params_dir = (
             params_dir if params_dir else os.path.join(self.home, "git", self.params_repo)
         )
+        self.concourse_client = ConcourseClient()
 
         if not self.git_helper.check_git_repo():
             raise ValueError("Repository is not a git repository")
@@ -338,33 +340,10 @@ class ReleaseHelper:
                 ["-f", foundation, "-r", message_body, "-o", self.owner, "-p", pipeline]
             )
 
-            # Unpause and trigger pipeline
-            subprocess.run(
-                ["fly", "-t", "tkgi-pipeline-upgrade", "unpause-pipeline", "-p", pipeline],
-                check=True,
-            )
-            subprocess.run(
-                [
-                    "fly",
-                    "-t",
-                    "tkgi-pipeline-upgrade",
-                    "trigger-job",
-                    "-j",
-                    f"{pipeline}/create-final-release",
-                ],
-                check=True,
-            )
-            subprocess.run(
-                [
-                    "fly",
-                    "-t",
-                    "tkgi-pipeline-upgrade",
-                    "watch",
-                    "-j",
-                    f"{pipeline}/create-final-release",
-                ],
-                check=True,
-            )
+            # Unpause and trigger pipeline using the concourse client
+            self.concourse_client.unpause_pipeline("tkgi-pipeline-upgrade", pipeline)
+            self.concourse_client.trigger_job("tkgi-pipeline-upgrade", f"{pipeline}/create-final-release")
+            self.concourse_client.watch_job("tkgi-pipeline-upgrade", f"{pipeline}/create-final-release")
 
             input("Press enter to continue")
             self.git_helper.pull_all()
@@ -402,22 +381,9 @@ class ReleaseHelper:
                 ]
             )
 
-            # Unpause and trigger pipeline
-            subprocess.run(
-                ["fly", "-t", foundation, "unpause-pipeline", "-p", pipeline], check=True
-            )
-            subprocess.run(
-                [
-                    "fly",
-                    "-t",
-                    foundation,
-                    "trigger-job",
-                    "-j",
-                    f"{pipeline}/set-release-pipeline",
-                    "-w",
-                ],
-                check=True,
-            )
+            # Unpause and trigger pipeline using the concourse client
+            self.concourse_client.unpause_pipeline(foundation, pipeline)
+            self.concourse_client.trigger_job(foundation, f"{pipeline}/set-release-pipeline", watch=True)
 
             input("Press enter to continue")
             return True
@@ -436,24 +402,16 @@ class ReleaseHelper:
             self.git_helper.error(f"CI directory not found at {ci_dir}")
             return
 
-        # Check for FLY_SCRIPT environment variable first
-        fly_script = os.getenv("FLY_SCRIPT")
-        if fly_script:
-            if not os.path.isabs(fly_script):
-                fly_script = os.path.join(ci_dir, fly_script)
-        else:
-            # Look for any script that starts with 'fly'
-            fly_scripts = []
-            for item in os.listdir(ci_dir):
-                if item.startswith("fly"):
-                    script_path = os.path.join(ci_dir, item)
-                    if os.path.isfile(script_path):
-                        fly_scripts.append(script_path)
-
-            if not fly_scripts:
-                self.git_helper.error(f"No fly script found in {ci_dir}")
-                return
-
+        # Use ConcourseClient to find the fly script
+        fly_scripts = self.concourse_client.find_fly_script(ci_dir)
+        
+        # Handle the result based on its type
+        if fly_scripts is None:
+            self.git_helper.error(f"No fly script found in {ci_dir}")
+            return
+        
+        # If a list of scripts was returned, let the user choose one
+        if isinstance(fly_scripts, list):
             if len(fly_scripts) == 1:
                 fly_script = fly_scripts[0]
             else:
@@ -472,17 +430,20 @@ class ReleaseHelper:
                         )
                     except ValueError:
                         self.git_helper.error("Please enter a valid number")
-
-        if not os.access(fly_script, os.X_OK):
-            self.git_helper.error(f"Fly script at {fly_script} is not executable")
-            return
+        else:
+            # Single script path was returned
+            fly_script = fly_scripts
 
         try:
-            subprocess.run([fly_script] + args, cwd=ci_dir, check=True)
+            # Use ConcourseClient to run the fly script
+            self.concourse_client.run_fly_script(fly_script, args, cwd=ci_dir)
+        except ValueError as e:
+            self.git_helper.error(str(e))
+            return
         except subprocess.CalledProcessError as e:
             self.git_helper.error(f"Fly script failed: {e.cmd}")
             self.git_helper.error(f"Exit code: {e.returncode}")
-            if e.output:
+            if hasattr(e, 'output') and e.output:
                 self.git_helper.error(f"Output: {e.output.decode()}")
             raise
 
