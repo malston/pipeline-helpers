@@ -17,21 +17,7 @@ class GitHelper:
         self.repo = repo
         self.repo_dir = repo_dir if repo_dir else os.path.join(self.home, "git", self.repo)
 
-    def info(self, message: str) -> None:
-        """Log an info message."""
-        logger.info(message)
-
-    def error(self, message: str) -> None:
-        """Log an error message."""
-        logger.error(message)
-
-    def warn(self, message: str) -> None:
-        """Log a warning message."""
-        logger.warning(message)
-
-    def success(self, message: str) -> None:
-        """Log a success message."""
-        logger.success(message)
+# Logging methods removed - use logger directly
 
     def get_repo_info(self, repo: Optional[str] = None) -> Tuple[str, str]:
         """Extract owner and repo name from git remote URL."""
@@ -65,7 +51,7 @@ class GitHelper:
         try:
             return git.Repo(repo_dir)
         except (git.InvalidGitRepositoryError, git.NoSuchPathError) as e:
-            self.error(f"Failed to get repository: {e}")
+            logger.error(f"Failed to get repository: {e}")
             raise
 
     def pull(self, repo: Optional[str] = None) -> None:
@@ -75,7 +61,7 @@ class GitHelper:
             origin = repo_obj.remotes.origin
             origin.pull(quiet=True)
         except Exception as e:
-            self.error(f"Failed to pull changes: {e}")
+            logger.error(f"Failed to pull changes: {e}")
 
     def pull_all(self, repo: Optional[str] = None) -> None:
         """Pull all changes from all remotes."""
@@ -84,7 +70,7 @@ class GitHelper:
             for remote in repo_obj.remotes:
                 remote.pull(quiet=True)
         except Exception as e:
-            self.error(f"Failed to pull changes: {e}")
+            logger.error(f"Failed to pull changes: {e}")
 
     def get_current_branch(self, repo: Optional[str] = None) -> str:
         """Get the current branch name."""
@@ -92,7 +78,7 @@ class GitHelper:
             repo_obj = self._get_repo(repo)
             return repo_obj.active_branch.name
         except Exception as e:
-            self.error(f"Failed to get current branch: {e}")
+            logger.error(f"Failed to get current branch: {e}")
             return ""
 
     def get_tags(self, repo: Optional[str] = None) -> Union[List[git.Tag], Dict[str, git.Tag]]:
@@ -114,7 +100,7 @@ class GitHelper:
             origin.push(refspec=f":refs/tags/{tag}")
             return True
         except Exception as e:
-            self.error(f"Failed to delete tag: {e}")
+            logger.error(f"Failed to delete tag: {e}")
             return False
 
     def has_uncommitted_changes(self, repo: Optional[str] = None) -> bool:
@@ -123,7 +109,7 @@ class GitHelper:
             repo_obj = self._get_repo(repo)
             return repo_obj.is_dirty()
         except Exception as e:
-            self.error(f"Failed to check git status: {e}")
+            logger.error(f"Failed to check git status: {e}")
             return True
 
     def reset_changes(self, repo: Optional[str] = None) -> None:
@@ -132,7 +118,7 @@ class GitHelper:
             repo_obj = self._get_repo(repo)
             repo_obj.head.reset(index=True, working_tree=True)
         except Exception as e:
-            self.error(f"Failed to reset changes: {e}")
+            logger.error(f"Failed to reset changes: {e}")
 
     def update_release_tag_in_params(
         self, params_repo: str, repo: str, from_version: str, to_version: str
@@ -155,7 +141,7 @@ class GitHelper:
                             with open(file_path, "w", encoding="utf-8") as f:
                                 f.write(new_content)
         except (IOError, OSError, PermissionError) as e:
-            self.error(f"Failed to update release tag in params: {e}")
+            logger.error(f"Failed to update release tag in params: {e}")
 
     def create_and_merge_branch(self, repo: str, branch_name: str, commit_message: str) -> bool:
         """Create a new branch, commit changes, and merge it into master."""
@@ -191,7 +177,7 @@ class GitHelper:
             
             return True
         except Exception as e:
-            self.error(f"Failed to create and merge branch: {e}")
+            logger.error(f"Failed to create and merge branch: {e}")
             return False
 
     def create_and_push_tag(self, repo: str, tag_name: str, tag_message: str) -> bool:
@@ -208,7 +194,7 @@ class GitHelper:
             
             return True
         except Exception as e:
-            self.error(f"Failed to create and push tag: {e}")
+            logger.error(f"Failed to create and push tag: {e}")
             return False
 
     def confirm(self, message: str) -> bool:

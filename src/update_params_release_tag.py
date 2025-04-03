@@ -5,6 +5,7 @@ import os
 
 from helpers.git_helper import GitHelper
 from helpers.release_helper import ReleaseHelper
+from helpers.logger import default_logger as logger
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -97,11 +98,11 @@ def main() -> None:
     )
     git_helper = GitHelper(repo=repo, repo_dir=repo_dir)
     if not git_helper.check_git_repo():
-        git_helper.error(f"{repo} is not a git repository")
+        logger.error(f"{repo} is not a git repository")
         return
 
     if not release_helper.update_params_git_release_tag():
-        git_helper.error("Failed to update git release tag")
+        logger.error("Failed to update git release tag")
         return
 
 

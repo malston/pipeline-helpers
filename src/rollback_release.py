@@ -6,6 +6,7 @@ import subprocess
 
 from helpers.git_helper import GitHelper
 from helpers.release_helper import ReleaseHelper
+from helpers.logger import default_logger as logger
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -78,7 +79,7 @@ def main() -> None:
         # Change to the repo's ci directory
         ci_dir = os.path.expanduser(f"~/git/{repo}/ci")
         if not os.path.exists(ci_dir):
-            git_helper.error(f"CI directory not found at {ci_dir}")
+            logger.error(f"CI directory not found at {ci_dir}")
             return
 
         os.chdir(ci_dir)
@@ -86,16 +87,16 @@ def main() -> None:
         # Validate release tag
         release_tag = f"{repo}-{args.release}"
         if not release_helper.validate_params_release_tag(release_tag):
-            git_helper.error(
+            logger.error(
                 f"Release [-r {args.release}] must be a valid release tagged on the params repo"
             )
-            git_helper.info("Valid tags are:")
+            logger.info("Valid tags are:")
             release_helper.print_valid_params_release_tags()
             return
 
         # Run set pipeline
         if not release_helper.run_set_pipeline(args.foundation):
-            git_helper.error("Failed to run set pipeline")
+            logger.error("Failed to run set pipeline")
             return
 
         # Ask user if they want to run the pipeline
@@ -114,11 +115,11 @@ def main() -> None:
                     check=True,
                 )
             except subprocess.CalledProcessError as e:
-                git_helper.error(f"Failed to trigger pipeline job: {e}")
+                logger.error(f"Failed to trigger pipeline job: {e}")
                 return
 
     except Exception as e:
-        git_helper.error(f"Unexpected error: {e}")
+        logger.error(f"Unexpected error: {e}")
         return
 
 

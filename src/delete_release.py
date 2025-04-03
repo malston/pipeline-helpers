@@ -16,6 +16,7 @@ import os
 
 from helpers.git_helper import GitHelper
 from helpers.release_helper import ReleaseHelper
+from helpers.logger import default_logger as logger
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -85,7 +86,7 @@ def delete_git_tag(
 ) -> None:
     """Delete a git tag with user confirmation if needed."""
     if not git_helper.tag_exists(tag):
-        git_helper.error(f"Git tag {tag} not found in repository")
+        logger.error(f"Git tag {tag} not found in repository")
         return
 
     if not args.non_interactive:
@@ -120,16 +121,16 @@ def main() -> None:
     release_helper = ReleaseHelper(repo=repo, repo_dir=repo_dir, owner=args.owner)
     git_helper = GitHelper(repo=repo, repo_dir=repo_dir)
     if not git_helper.check_git_repo():
-        git_helper.error(f"{repo} is not a git repository")
+        logger.error(f"{repo} is not a git repository")
         return
 
     release = release_helper.get_github_release_by_tag(args.release_tag)
 
     if not release:
-        git_helper.error(f"Release {args.release_tag} not found")
+        logger.error(f"Release {args.release_tag} not found")
         releases = release_helper.get_releases()
         if not releases:
-            git_helper.info("No releases found")
+            logger.info("No releases found")
             if not args.no_tag_deletion:
                 delete_git_tag(git_helper, release_helper, args.release_tag, args)
             return
@@ -146,7 +147,7 @@ def main() -> None:
             return
 
     if not release_helper.delete_github_release(args.release_tag):
-        git_helper.error("Failed to delete GitHub release")
+        logger.error("Failed to delete GitHub release")
 
     if not args.no_tag_deletion:
         delete_git_tag(git_helper, release_helper, args.release_tag, args)

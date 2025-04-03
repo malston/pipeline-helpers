@@ -7,6 +7,7 @@ import subprocess
 from helpers.git_helper import GitHelper
 from helpers.release_helper import ReleaseHelper
 from helpers.concourse import ConcourseClient
+from helpers.logger import default_logger as logger
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -97,7 +98,7 @@ def main() -> None:
     # Initialize helpers
     git_helper = GitHelper(repo=repo)
     if not git_helper.check_git_repo():
-        git_helper.error("Git is not installed or not in PATH")
+        logger.error("Git is not installed or not in PATH")
         return
     release_helper = ReleaseHelper(repo=repo, owner=args.owner, params_repo=params_repo)
     concourse_client = ConcourseClient()
@@ -106,40 +107,40 @@ def main() -> None:
         # Change to the repo's ci directory
         ci_dir = os.path.expanduser(f"~/git/{repo}/ci")
         if not os.path.exists(ci_dir):
-            git_helper.error(f"CI directory not found at {ci_dir}")
+            logger.error(f"CI directory not found at {ci_dir}")
             return
 
         if args.dry_run:
-            git_helper.info("DRY RUN MODE - No changes will be made")
-            git_helper.info(f"Would change to directory: {ci_dir}")
+            logger.info("DRY RUN MODE - No changes will be made")
+            logger.info(f"Would change to directory: {ci_dir}")
         else:
             os.chdir(ci_dir)
 
         # Run release pipeline
         if args.dry_run:
-            git_helper.info(f"Would run release pipeline: {release_pipeline}")
-            git_helper.info(f"Foundation: {args.foundation}")
+            logger.info(f"Would run release pipeline: {release_pipeline}")
+            logger.info(f"Foundation: {args.foundation}")
             if args.message:
-                git_helper.info(f"Release message: {args.message}")
+                logger.info(f"Release message: {args.message}")
         else:
             if not release_helper.run_release_pipeline(args.foundation, args.message):
-                git_helper.error("Failed to run release pipeline")
+                logger.error("Failed to run release pipeline")
                 return
 
         # Update git release tag
         if args.dry_run:
-            git_helper.info("Would update git release tag")
+            logger.info("Would update git release tag")
         else:
             if not release_helper.update_params_git_release_tag():
-                git_helper.error("Failed to update git release tag")
+                logger.error("Failed to update git release tag")
                 return
 
         # Run set pipeline
         if args.dry_run:
-            git_helper.info(f"Would run set pipeline for foundation: {args.foundation}")
+            logger.info(f"Would run set pipeline for foundation: {args.foundation}")
         else:
             if not release_helper.run_set_pipeline(args.foundation):
-                git_helper.error("Failed to run set pipeline")
+                logger.error("Failed to run set pipeline")
                 return
 
         # Ask if user wants to run the prepare-kustomizations job
@@ -154,7 +155,7 @@ def main() -> None:
                     watch=True
                 )
         else:
-            git_helper.info(f"Would prompt to run tkgi-{repo}-{args.foundation} pipeline")
+            logger.info(f"Would prompt to run tkgi-{repo}-{args.foundation} pipeline")
 
         # Get current branch
         branch = git_helper.get_current_branch()
@@ -179,17 +180,17 @@ def main() -> None:
                             check=True,
                         )
                     except subprocess.CalledProcessError as e:
-                        git_helper.error(f"Failed to run fly.sh: {e}")
+                        logger.error(f"Failed to run fly.sh: {e}")
                 else:
-                    git_helper.error(f"Fly script not found or not executable at {fly_script}")
+                    logger.error(f"Fly script not found or not executable at {fly_script}")
         else:
-            git_helper.info(f"Would prompt to refly pipeline on branch: {branch}")
+            logger.info(f"Would prompt to refly pipeline on branch: {branch}")
 
     except subprocess.CalledProcessError as e:
-        git_helper.error(f"Command failed with exit code {e.returncode}: {e}")
+        logger.error(f"Command failed with exit code {e.returncode}: {e}")
         return
     except Exception as e:
-        git_helper.error(f"Unexpected error: {e}")
+        logger.error(f"Unexpected error: {e}")
         return
 
 
