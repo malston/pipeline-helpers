@@ -5,8 +5,8 @@ import os
 import subprocess
 
 from helpers.git_helper import GitHelper
-from helpers.release_helper import ReleaseHelper
 from helpers.logger import default_logger as logger
+from helpers.release_helper import ReleaseHelper
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):

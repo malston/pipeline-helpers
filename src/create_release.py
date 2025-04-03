@@ -4,10 +4,10 @@ import argparse
 import os
 import subprocess
 
-from helpers.git_helper import GitHelper
-from helpers.release_helper import ReleaseHelper
 from helpers.concourse import ConcourseClient
+from helpers.git_helper import GitHelper
 from helpers.logger import default_logger as logger
+from helpers.release_helper import ReleaseHelper
 
 
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):

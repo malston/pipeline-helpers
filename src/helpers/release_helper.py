@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 
 import argparse
-import git
 import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import List, Optional
 
+import git
 import requests
 from packaging import version
 
-from helpers.git_helper import GitHelper
 from helpers.concourse import ConcourseClient
+from helpers.git_helper import GitHelper
 from helpers.logger import default_logger as logger
 
 # Import GitHub client conditionally

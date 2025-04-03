@@ -6,8 +6,6 @@ import os
 import subprocess
 from typing import List, Optional
 
-from helpers.logger import default_logger as logger
-
 
 class ConcourseClient:
     """Client for interacting with Concourse CI.
