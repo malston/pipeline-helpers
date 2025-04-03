@@ -7,7 +7,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}Pipeline Helpers Installer${NC}"
-echo "This script will install the pipeline-helpers tools on your system."
+echo "This script will install the pipeline-helpers package."
 echo
 
 # Check if Python is installed
@@ -20,16 +20,21 @@ fi
 # Create installation directory
 INSTALL_DIR="$HOME/.pipeline-helpers"
 mkdir -p "$INSTALL_DIR"
+mkdir -p "$INSTALL_DIR/wheels"
 
-# Clone or update the repository
-if [ -d "$INSTALL_DIR/repo" ]; then
-    echo "Updating existing installation..."
-    cd "$INSTALL_DIR/repo"
-    git pull
+# Download the wheel file
+echo "Downloading pipeline-helpers wheel package..."
+# WHEEL_URL="https://example.com/dist/pipeline_helpers-$(VERSION)-py3-none-any.whl"
+WHEEL_FILE="pipeline_helpers-$(VERSION)-py3-none-any.whl"
+
+# For local installation, copy the wheel instead of downloading
+if [ -f "$(DIST_DIR)/$(WHEEL_FILE)" ]; then
+    cp "$(DIST_DIR)/$(WHEEL_FILE)" "$INSTALL_DIR/wheels/"
 else
-    echo "Downloading pipeline-helpers..."
-    git clone https://github.com/malston/pipeline-helpers.git "$INSTALL_DIR/repo"
-    cd "$INSTALL_DIR/repo"
+    # In a real scenario, you'd download from your hosting location
+    echo -e "${RED}Wheel file not found locally.${NC}"
+    echo "This script is meant to be distributed with the wheel file."
+    exit 1
 fi
 
 # Create a virtual environment if it doesn't exist
@@ -39,13 +44,10 @@ if [ ! -d "$INSTALL_DIR/venv" ]; then
 fi
 
 # Activate virtual environment and install the package
-echo "Installing dependencies..."
+echo "Installing dependencies and package..."
 source "$INSTALL_DIR/venv/bin/activate"
 pip install --upgrade pip setuptools wheel
-pip install -e .
-
-# Explicitly install required dependencies
-pip install packaging gitpython requests semver pyyaml ruff tabulate
+pip install "$INSTALL_DIR/wheels/$WHEEL_FILE"
 deactivate
 
 # Create wrapper scripts in ~/.local/bin
@@ -55,22 +57,22 @@ mkdir -p "$BIN_DIR"
 echo "Creating command wrappers..."
 
 for CMD in create-release delete-release rollback-release update-params-release-tag demo-release-pipeline; do
-    cat > "$BIN_DIR/$CMD" << EOF
+    cat > "$BIN_DIR/$CMD" << 'WRAPPER'
 #!/bin/bash
-source "$INSTALL_DIR/venv/bin/activate"
+source "$HOME/.pipeline-helpers/venv/bin/activate"
 $CMD "\$@"
 deactivate
-EOF
+WRAPPER
     chmod +x "$BIN_DIR/$CMD"
 done
 
 # Check if ~/.local/bin is in PATH
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
     echo -e "${BLUE}Adding ~/.local/bin to your PATH...${NC}"
-    
+
     # Determine shell type
     SHELL_NAME=$(basename "$SHELL")
-    
+
     if [ "$SHELL_NAME" = "bash" ]; then
         PROFILE_FILE="$HOME/.bashrc"
     elif [ "$SHELL_NAME" = "zsh" ]; then
@@ -81,7 +83,7 @@ if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
         echo 'export PATH="$HOME/.local/bin:$PATH"'
         PROFILE_FILE=""
     fi
-    
+
     if [ -n "$PROFILE_FILE" ]; then
         if grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$PROFILE_FILE"; then
             echo "PATH already configured in $PROFILE_FILE"
@@ -102,3 +104,4 @@ echo "  - update-params-release-tag"
 echo "  - demo-release-pipeline"
 echo
 echo "If the commands are not available, please add ~/.local/bin to your PATH or restart your terminal."
+EOF
