@@ -74,7 +74,7 @@ def main() -> None:
     git_helper = GitHelper(repo=repo)
     if not git_helper.check_git_repo():
         raise ValueError(f"Git repository {repo} not found or not a valid Git repository")
-        
+
     release_helper = ReleaseHelper(repo=repo, owner=args.owner, params_repo=params_repo)
 
     # Change to the repo's ci directory

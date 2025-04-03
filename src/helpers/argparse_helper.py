@@ -22,7 +22,7 @@ class HelpfulArgumentParser(argparse.ArgumentParser):
 
     def __init__(self, *args, **kwargs):
         # Don't print usage when an error occurs, we'll handle it ourselves
-        kwargs['usage'] = kwargs.get('usage', None)
+        kwargs["usage"] = kwargs.get("usage", None)
         super().__init__(*args, **kwargs)
 
     def parse_args(
