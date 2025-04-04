@@ -2,6 +2,7 @@
 
 import os
 import re
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 import git
@@ -12,16 +13,27 @@ from src.helpers.logger import default_logger as logger
 class GitHelper:
     """Helper class for git operations used in release pipeline scripts."""
 
-    def __init__(self, repo_dir: Optional[str] = None, repo: Optional[str] = None):
-        self.home = os.path.expanduser("~")
+    def __init__(
+        self,
+        git_dir: str,
+        repo_dir: Optional[str] = None,
+        repo: Optional[str] = None,
+        params: str = "params",
+        params_dir: Optional[str] = None,
+    ):
+        self.git_dir = (
+            git_dir if git_dir else os.environ.get("GIT_WORKSPACE", str(Path.home() / "git"))
+        )
         self.repo = repo
-        self.repo_dir = repo_dir if repo_dir else os.path.join(self.home, "git", self.repo)
+        self.repo_dir = repo_dir if repo_dir else os.path.join(self.git_dir, self.repo)
+        self.params = params
+        self.params_dir = params_dir if params_dir else os.path.join(self.git_dir, self.params)
 
     # Logging methods removed - use logger directly
 
     def get_repo_info(self, repo: Optional[str] = None) -> Tuple[str, str]:
         """Extract owner and repo name from git remote URL."""
-        repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
+        repo_dir = self.repo_dir if repo is None else os.path.join(self.git_dir, repo)
         try:
             repo_obj = git.Repo(repo_dir)
             for remote in repo_obj.remotes:
@@ -38,7 +50,7 @@ class GitHelper:
 
     def check_git_repo(self, repo: Optional[str] = None) -> bool:
         """Check if repo is a git repository."""
-        repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
+        repo_dir = self.repo_dir if repo is None else os.path.join(self.git_dir, repo)
         try:
             git.Repo(repo_dir)
             return True
@@ -47,11 +59,11 @@ class GitHelper:
 
     def _get_repo(self, repo: Optional[str] = None) -> git.Repo:
         """Get a git.Repo object for the specified repository."""
-        repo_dir = self.repo_dir if repo is None else os.path.join(self.home, "git", repo)
+        repo_dir = self.repo_dir if repo is None else os.path.join(self.git_dir, repo)
         try:
             return git.Repo(repo_dir)
         except (git.InvalidGitRepositoryError, git.NoSuchPathError) as e:
-            logger.error(f"Failed to get repository: {e}")
+            logger.error(f"Failed to get repository '{repo_dir}': {e}")
             raise
 
     def pull(self, repo: Optional[str] = None) -> None:
@@ -124,7 +136,7 @@ class GitHelper:
         self, params_repo: str, repo: str, from_version: str, to_version: str
     ) -> None:
         """Update the release tag in params files."""
-        params_dir = os.path.join(self.home, "git", params_repo)
+        params_dir = self.params_dir if params_repo is None else os.path.join(self.git_dir, repo)
         try:
             # Find and update files
             for root, _, files in os.walk(params_dir):

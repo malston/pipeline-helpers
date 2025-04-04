@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.update_params_release_tag import parse_args
 
+
 # Create an undecorated version of the main function for testing
 def main_test_function():
     """

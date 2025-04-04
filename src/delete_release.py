@@ -1,18 +1,8 @@
 #!/usr/bin/env python3
 
-# Delete a GitHub release.
-# This script deletes a GitHub release and optionally the associated git tag.
-# Usage:
-#     delete_release.py -r release_tag [-o owner] [-x] [-n] [-h]
-# Options:
-#     -r release_tag   the release tag
-#     -o owner         the github owner (default: Utilities-tkgieng)
-#     -x               do not delete the git tag
-#     -n               non-interactive
-#     -h               display usage
-
 import argparse
 import os
+from pathlib import Path
 
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.git_helper import GitHelper
@@ -27,18 +17,22 @@ def parse_args() -> argparse.Namespace:
         description="Delete a GitHub release",
         formatter_class=CustomHelpFormatter,
         add_help=False,
-        usage="%(prog)s -r release_tag [-o owner] [-x] [-n] [-h]",
+        usage="%(prog)s -r repo -t tag [-o owner] [-x] [-n] [-h]",
         epilog="""
 Options:
-  -r release_tag   the release tag
+  -r repo          the repo to use
+  -t tag           the release tag (e.g.: v1.0.0)
   -o owner         the github owner (default: Utilities-tkgieng)
   -x               do not delete the git tag
   -n               non-interactive
+  -w dir           the base directory containing git repositories (default: $GIT_WORKSPACE or ~/git)
   -h               display usage
 """,
     )
+    parser.add_argument("-r", "--repo", required=True, help=argparse.SUPPRESS)
     parser.add_argument(
-        "-r",
+        "-t",
+        "--tag",
         "--release-tag",
         required=True,
         help=argparse.SUPPRESS,
@@ -59,6 +53,14 @@ Options:
         "-n",
         "--non-interactive",
         action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-w",
+        "--git-dir",
+        "--workspace",
+        default=os.environ.get("GIT_WORKSPACE", str(Path.home() / "git")),
+        type=str,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
@@ -95,10 +97,12 @@ def print_available_releases(releases: list) -> None:
 def main() -> None:
     """Main function to delete a GitHub release."""
     args = parse_args()
-    repo = "ns-mgmt"
+    repo = args.repo
+    owner = args.owner
+    release_tag = args.tag
 
-    git_dir = os.path.expanduser("~/git")
-    repo_dir = os.path.join(git_dir, repo)
+    git_dir = args.git_dir
+    repo_dir = os.path.join(git_dir, args.repo)
 
     # Check if repo ends with the owner
     if args.owner != "Utilities-tkgieng":
@@ -107,31 +111,36 @@ def main() -> None:
         raise ValueError(f"Could not find repo directory: {repo_dir}")
 
     # Initialize helpers
-    release_helper = ReleaseHelper(repo=repo, repo_dir=repo_dir, owner=args.owner)
-    git_helper = GitHelper(repo=repo, repo_dir=repo_dir)
+    release_helper = ReleaseHelper(
+        repo=repo,
+        git_dir=git_dir,
+        repo_dir=repo_dir,
+        owner=owner,
+    )
+    git_helper = GitHelper(git_dir=git_dir, repo=repo, repo_dir=repo_dir)
+    # release_helper = ReleaseHelper(repo=repo, repo_dir=repo_dir, owner=args.owner)
+    # git_helper = GitHelper(repo=repo, repo_dir=repo_dir)
     if not git_helper.check_git_repo():
         logger.error(f"{repo} is not a git repository")
         return
 
-    release = release_helper.get_github_release_by_tag(args.release_tag)
+    release = release_helper.get_github_release_by_tag(release_tag)
 
     if not release:
         releases = release_helper.get_releases()
         if not releases:
             logger.info("No releases found")
             if not args.no_tag_deletion:
-                delete_git_tag(git_helper, release_helper, args.release_tag, args.non_interactive)
+                delete_git_tag(git_helper, release_helper, release_tag, args.non_interactive)
             return
-        logger.error(f"Release {args.release_tag} not found")
+        logger.error(f"Release {release_tag} not found")
         print_available_releases(releases)
         if not args.no_tag_deletion:
-            delete_git_tag(git_helper, release_helper, args.release_tag, args.non_interactive)
+            delete_git_tag(git_helper, release_helper, release_tag, args.non_interactive)
         return
 
     if not args.non_interactive:
-        user_input = input(
-            f"Are you sure you want to delete github release: {args.release_tag}? [yN] "
-        )
+        user_input = input(f"Are you sure you want to delete github release: {release_tag}? [yN] ")
         if not user_input.lower().startswith("y"):
             return
 
@@ -139,9 +148,9 @@ def main() -> None:
         logger.error("Failed to delete GitHub release")
 
     if not args.no_tag_deletion:
-        delete_git_tag(git_helper, release_helper, args.release_tag, args.non_interactive)
+        delete_git_tag(git_helper, release_helper, release_tag, args.non_interactive)
 
-    logger.info(f"Deleted GitHub release: {args.release_tag}")
+    logger.info(f"Deleted GitHub release: {release_tag}")
 
 
 if __name__ == "__main__":

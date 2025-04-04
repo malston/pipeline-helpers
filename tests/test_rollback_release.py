@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.rollback_release import CustomHelpFormatter, parse_args
 
+
 # Create an undecorated version of the main function for testing
 def main_test_function():
     """
@@ -18,7 +19,7 @@ def main_test_function():
     from src.rollback_release import GitHelper, ReleaseHelper
     import os
     import subprocess
-    
+
     args = parse_args()
     repo = "ns-mgmt"
     params_repo = args.params_repo
@@ -31,7 +32,7 @@ def main_test_function():
     git_helper = GitHelper(repo=repo)
     if not git_helper.check_git_repo():
         raise ValueError(f"Git repository {repo} not found or not a valid Git repository")
-        
+
     release_helper = ReleaseHelper(repo=repo, owner=args.owner, params_repo=params_repo)
 
     # Change to the repo's ci directory
@@ -45,7 +46,9 @@ def main_test_function():
     release_tag = f"{repo}-{args.release}"
     if not release_helper.validate_params_release_tag(release_tag):
         release_helper.print_valid_params_release_tags()
-        raise ValueError(f"Release [-r {args.release}] must be a valid release tagged on the params repo")
+        raise ValueError(
+            f"Release [-r {args.release}] must be a valid release tagged on the params repo"
+        )
 
     # Run set pipeline
     if not release_helper.run_set_pipeline(args.foundation):
@@ -132,7 +135,7 @@ def test_main_ci_dir_not_found(
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
     mock_exists.return_value = False
-    
+
     # Mock expanduser to avoid file system errors
     mock_ci_dir = "/home/user/git/ns-mgmt/ci"
     mock_expanduser.return_value = mock_ci_dir
@@ -141,7 +144,7 @@ def test_main_ci_dir_not_found(
     with patch("sys.argv", ["rollback_release.py", "-f", "foundation1", "-r", "v1.0.0"]):
         with pytest.raises(ValueError) as excinfo:
             main_test_function()
-        
+
         # Verify the error message
         assert "CI directory not found" in str(excinfo.value)
 
@@ -164,11 +167,11 @@ def test_main_invalid_release_tag(
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
     mock_exists.return_value = True
-    
+
     # Mock expanduser to avoid file system errors
     mock_ci_dir = "/home/user/git/ns-mgmt/ci"
     mock_expanduser.return_value = mock_ci_dir
-    
+
     # Make validate_params_release_tag return False
     mock_release_helper.return_value.validate_params_release_tag.return_value = False
 
@@ -176,7 +179,7 @@ def test_main_invalid_release_tag(
     with patch("sys.argv", ["rollback_release.py", "-f", "foundation1", "-r", "v1.0.0"]):
         with pytest.raises(ValueError) as excinfo:
             main_test_function()
-        
+
         # Verify the error message
         assert "must be a valid release tagged on the params repo" in str(excinfo.value)
 
@@ -203,11 +206,11 @@ def test_main_set_pipeline_fails(
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
     mock_exists.return_value = True
-    
+
     # Mock expanduser to avoid file system errors
     mock_ci_dir = "/home/user/git/ns-mgmt/ci"
     mock_expanduser.return_value = mock_ci_dir
-    
+
     # Make methods return appropriate values
     mock_release_helper.return_value.validate_params_release_tag.return_value = True
     mock_release_helper.return_value.run_set_pipeline.return_value = False
@@ -216,7 +219,7 @@ def test_main_set_pipeline_fails(
     with patch("sys.argv", ["rollback_release.py", "-f", "foundation1", "-r", "v1.0.0"]):
         with pytest.raises(ValueError) as excinfo:
             main_test_function()
-        
+
         # Verify the error message
         assert "Failed to run set pipeline" in str(excinfo.value)
 
@@ -243,15 +246,15 @@ def test_main_trigger_pipeline_user_accepts(
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
     mock_exists.return_value = True
-    
+
     # Mock expanduser to avoid file system errors
     mock_ci_dir = "/home/user/git/ns-mgmt/ci"
     mock_expanduser.return_value = mock_ci_dir
-    
+
     # Make methods return appropriate values
     mock_release_helper.return_value.validate_params_release_tag.return_value = True
     mock_release_helper.return_value.run_set_pipeline.return_value = True
-    
+
     # Mock user input to accept running pipeline
     mock_input.return_value = "yes"
 
@@ -292,15 +295,15 @@ def test_main_trigger_pipeline_user_declines(
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
     mock_exists.return_value = True
-    
+
     # Mock expanduser to avoid file system errors
     mock_ci_dir = "/home/user/git/ns-mgmt/ci"
     mock_expanduser.return_value = mock_ci_dir
-    
+
     # Make methods return appropriate values
     mock_release_helper.return_value.validate_params_release_tag.return_value = True
     mock_release_helper.return_value.run_set_pipeline.return_value = True
-    
+
     # Mock user input to decline running pipeline
     mock_input.return_value = "no"
 
@@ -331,18 +334,18 @@ def test_main_trigger_pipeline_subprocess_error(
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
     mock_exists.return_value = True
-    
+
     # Mock expanduser to avoid file system errors
     mock_ci_dir = "/home/user/git/ns-mgmt/ci"
     mock_expanduser.return_value = mock_ci_dir
-    
+
     # Make methods return appropriate values
     mock_release_helper.return_value.validate_params_release_tag.return_value = True
     mock_release_helper.return_value.run_set_pipeline.return_value = True
-    
+
     # Mock user input to accept running pipeline
     mock_input.return_value = "yes"
-    
+
     # Make subprocess.run raise an error
     mock_subprocess_run.side_effect = subprocess.CalledProcessError(1, "fly")
 
@@ -350,7 +353,7 @@ def test_main_trigger_pipeline_subprocess_error(
     with patch("sys.argv", ["rollback_release.py", "-f", "foundation1", "-r", "v1.0.0"]):
         with pytest.raises(ValueError) as excinfo:
             main_test_function()
-        
+
         # Verify the error message
         assert "Failed to trigger pipeline job" in str(excinfo.value)
 
@@ -358,12 +361,10 @@ def test_main_trigger_pipeline_subprocess_error(
 @patch("src.rollback_release.GitHelper")
 @patch("src.rollback_release.ReleaseHelper")
 @patch("os.path.exists")
-def test_main_unexpected_error(
-    mock_exists, mock_release_helper, mock_git_helper
-):
+def test_main_unexpected_error(mock_exists, mock_release_helper, mock_git_helper):
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
-    
+
     # Make os.path.exists raise an unexpected error
     mock_exists.side_effect = Exception("Unexpected test error")
 
@@ -371,7 +372,7 @@ def test_main_unexpected_error(
     with patch("sys.argv", ["rollback_release.py", "-f", "foundation1", "-r", "v1.0.0"]):
         with pytest.raises(Exception) as excinfo:
             main_test_function()
-        
+
         # Verify it's our test error that was raised
         assert "Unexpected test error" in str(excinfo.value)
 
@@ -387,17 +388,20 @@ def test_main_with_custom_owner(
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
     mock_exists.return_value = True
-    
+
     # Mock expanduser to avoid file system errors
     mock_ci_dir = "/home/user/git/ns-mgmt-custom-owner/ci"
     mock_expanduser.return_value = mock_ci_dir
-    
+
     # Make methods return appropriate values
     mock_release_helper.return_value.validate_params_release_tag.return_value = True
     mock_release_helper.return_value.run_set_pipeline.return_value = True
 
     # Set args.owner to a custom value
-    with patch("sys.argv", ["rollback_release.py", "-f", "foundation1", "-r", "v1.0.0", "-o", "custom-owner"]):
+    with patch(
+        "sys.argv",
+        ["rollback_release.py", "-f", "foundation1", "-r", "v1.0.0", "-o", "custom-owner"],
+    ):
         # Mock user input to decline running pipeline
         with patch("builtins.input", return_value="no"):
             main_test_function()

@@ -54,6 +54,7 @@ class ReleaseHelper:
     def __init__(
         self,
         repo: str,
+        git_dir: str,
         owner: str = "Utilities-tkgieng",
         params_repo: str = "params",
         repo_dir: str = None,
@@ -61,16 +62,23 @@ class ReleaseHelper:
         token: str = None,
     ) -> None:
         self.repo = repo
+        self.git_dir = (
+            git_dir if git_dir else os.environ.get("GIT_WORKSPACE", str(Path.home() / "git"))
+        )
         self.owner = owner
         self.params_repo = params_repo
-        self.git_helper = GitHelper(repo=repo, repo_dir=repo_dir)
-        self.github_client = GitHubClient(token=token)
         self.home = str(Path.home())
-        self.repo_dir = repo_dir if repo_dir else os.path.join(self.home, "git", self.repo)
-        self.params_dir = (
-            params_dir if params_dir else os.path.join(self.home, "git", self.params_repo)
-        )
+        self.repo_dir = repo_dir if repo_dir else os.path.join(self.git_dir, self.repo)
+        self.params_dir = params_dir if params_dir else os.path.join(self.git_dir, self.params_repo)
         self.concourse_client = ConcourseClient()
+        self.git_helper = GitHelper(
+            git_dir=self.git_dir,
+            repo=self.repo,
+            repo_dir=self.repo_dir,
+            params=self.params_repo,
+            params_dir=self.params_dir,
+        )
+        self.github_client = GitHubClient(token=token)
 
         if not self.git_helper.check_git_repo():
             raise ValueError("Repository is not a git repository")
@@ -108,10 +116,10 @@ class ReleaseHelper:
             logger.error("No release tags found. Make sure to fly the release pipeline.")
             sys.exit(1)
 
-    def get_latest_release(self) -> str:
+    def get_latest_release(self, filter: str = "release-v") -> str:
         """Get the latest release version without the 'release-v' prefix."""
         tag = self.get_latest_release_tag()
-        return tag.replace("release-v", "")
+        return tag.replace(filter, "")
 
     def get_releases(self) -> Optional[List[str]]:
         """Get all releases for the repository."""
@@ -121,19 +129,19 @@ class ReleaseHelper:
             logger.error(f"Error fetching releases: {str(e)}")
             return None
 
-    def validate_release_param(self, param: str) -> bool:
+    def validate_release_param(self, param: str, filter: str = "release-v") -> bool:
         """Validate a release parameter format."""
         if not param:
             logger.error("Error: Parameter is required")
             logger.info("Example: release-v1.0.0")
             return False
 
-        if not param.startswith("release-v"):
+        if not param.startswith(filter):
             logger.error("Error: Parameter must start with 'release-v'")
             logger.info("Example: release-v1.0.0")
             return False
 
-        version_part = param.replace("release-v", "")
+        version_part = param.replace(filter, "")
         parts = version_part.split(".")
         if len(parts) != 3:
             logger.error("Error: Invalid semantic version format after 'release-v'")
@@ -220,28 +228,26 @@ class ReleaseHelper:
             if tag.startswith(self.repo):
                 logger.info(f'> {tag.replace(f"{self.repo}-", "")}')
 
-    def update_params_git_release_tag(self) -> bool:
+    def update_params_git_release_tag(self, filter: str = "release-v") -> bool:
         """Update the git release tag in params repo."""
         try:
             self.git_helper.pull_all()
             tags = self.git_helper.get_tags()
-            release_tags = [t for t in tags if t.name.startswith("release-v")]
+            release_tags = [t for t in tags if t.name.startswith(filter)]
             if not release_tags:
                 logger.error("No release tags found")
                 return False
 
             last_release = (
-                sorted(release_tags, key=lambda t: version.parse(t.name.replace("release-v", "")))[
-                    -2
-                ]
+                sorted(release_tags, key=lambda t: version.parse(t.name.replace(filter, "")))[-2]
                 if len(release_tags) > 1
                 else release_tags[0]
             )
             current_release = sorted(
-                release_tags, key=lambda t: version.parse(t.name.replace("release-v", ""))
+                release_tags, key=lambda t: version.parse(t.name.replace(filter, ""))
             )[-1]
-            last_version = last_release.name.replace("release-v", "")
-            current_version = current_release.name.replace("release-v", "")
+            last_version = last_release.name.replace(filter, "")
+            current_version = current_release.name.replace(filter, "")
 
             logger.info(
                 f"Updating the {self.params_repo} for the tkgi-{self.repo} pipeline "
