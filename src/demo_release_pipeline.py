@@ -6,7 +6,9 @@ import re
 import subprocess
 import sys
 from typing import Optional
+from pathlib import Path
 
+from src.helpers.command_helper import CommandHelper
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.concourse import ConcourseClient
 from src.helpers.error_handler import wrap_main
@@ -20,6 +22,9 @@ class DemoReleasePipeline:
 
     def __init__(
         self,
+        git_helper: GitHelper,
+        release_helper: ReleaseHelper,
+        concourse_client: ConcourseClient,
         foundation: str,
         repo: str,
         repo_dir: str,
@@ -32,6 +37,9 @@ class DemoReleasePipeline:
         release_body: str,
         dry_run: bool = False,
     ):
+        self.git_helper = git_helper
+        self.release_helper = release_helper
+        self.concourse_client = concourse_client
         self.foundation = foundation
         self.branch = branch
         self.params_branch = params_branch
@@ -40,31 +48,13 @@ class DemoReleasePipeline:
         self.dry_run = dry_run
         self.owner = owner
         self.repo = repo
+        self.repo_dir = repo_dir
         self.params_repo = params_repo
         self.params_dir = params_dir
 
         self.github_token = os.getenv("GITHUB_TOKEN")
         if not self.github_token:
             raise ValueError("GITHUB_TOKEN env must be set before executing this script")
-
-        # Store the repo directory path
-        self.repo_dir = repo_dir
-        if not os.path.isdir(self.repo_dir):
-            raise ValueError(f"Could not find repo directory: {self.repo_dir}")
-
-        self.git_helper = GitHelper(repo=self.repo, repo_dir=self.repo_dir)
-        self.release_helper = ReleaseHelper(
-            repo=self.repo,
-            repo_dir=self.repo_dir,
-            owner=self.owner,
-            params_repo=self.params_repo,
-            params_dir=self.params_dir,
-            token=self.github_token,
-        )
-        self.concourse_client = ConcourseClient()
-
-        if not self.git_helper.check_git_repo():
-            raise ValueError("Repository is not a git repository")
 
     def is_semantic_version(self, version: str) -> bool:
         """Check if a string is a valid semantic version number.
@@ -614,8 +604,8 @@ Options:
    -d params_branch  the params branch to use (default: master)
    -t tag            the release tag (default: latest)
    -m message        the message to apply to the release that is created
+   -w dir            the base directory containing git repositories (default: $GIT_WORKSPACE or ~/git)
    --dry-run         run in dry-run mode (no actual changes will be made)
-   --git-dir dir     the base directory containing git repositories (default: ~/git)
    -h                display usage
 """,
     )
@@ -625,21 +615,58 @@ Options:
         required=True,
         help=argparse.SUPPRESS,
     )
-    parser.add_argument("-r", "--repo", required=True, help=argparse.SUPPRESS)
-    parser.add_argument("-o", "--owner", default=os.getenv("USER"), help=argparse.SUPPRESS)
-    parser.add_argument("-b", "--branch", default=None, help=argparse.SUPPRESS)
-    parser.add_argument("-p", "--params-repo", default="params", help=argparse.SUPPRESS)
-    parser.add_argument("-d", "--params-branch", default="master", help=argparse.SUPPRESS)
-    parser.add_argument("-t", "--tag", default=None, help=argparse.SUPPRESS)
-    parser.add_argument("-m", "--message", default="", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "-r",
+        "--repo",
+        required=True,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-o",
+        "--owner",
+        default="Utilities-tkgieng",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-b",
+        "--branch",
+        default=None,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-p",
+        "--params-repo",
+        default="params",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-d",
+        "--params-branch",
+        default="master",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-t",
+        "--tag",
+        default=None,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-m",
+        "--message",
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
+        "-w",
         "--git-dir",
-        default=None,
+        "--workspace",
+        default=os.environ.get("GIT_WORKSPACE", str(Path.home() / "git")),
+        type=str,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
@@ -650,40 +677,71 @@ Options:
     )
 
     args = parser.parse_args()
+    repo = args.repo
+    params_repo = args.params_repo
+    owner = args.owner
     git_dir = args.git_dir
-    if git_dir is None:
-        git_dir = os.path.expanduser("~/git")
+    foundation = args.foundation
+    message = args.message
+    dry_run = args.dry_run
+    branch = args.branch
+    params_branch = args.params_branch
+    release_tag = args.tag
 
-    repo_dir = os.path.join(git_dir, args.repo)
-    params_dir = os.path.join(git_dir, args.params_repo)
-    params_repo = "params"
+    if not os.path.isdir(git_dir):
+        raise ValueError(f"Could not find git directory: {git_dir}")
+    if not os.path.isdir(os.path.join(git_dir, repo)):
+        raise ValueError(f"Could not find repo directory: {git_dir}/{repo}")
 
-    # Check if repo ends with the owner
-    if args.repo.endswith(args.owner):
-        args.repo = args.repo[: -len(args.owner) - 1]
+    logger.info(f"Creating release for repo: {repo}")
+    logger.info(f"Foundation: {foundation}")
 
-    # Check if params_repo ends with the owner
-    if args.params_repo.endswith(args.owner):
-        args.params_repo = args.params_repo[: -len(args.owner) - 1]
+    repo_dir = os.path.join(git_dir, repo)
+    params_dir = os.path.join(git_dir, params_repo)
+    command_helper = CommandHelper(git_dir=git_dir, owner=owner)
+    repo, repo_dir, params_repo, params_dir = command_helper.adjust_repo_and_params_paths(
+        repo, params_repo
+    )
 
-    # Check if repo ends with the owner
-    if args.owner != "Utilities-tkgieng":
-        repo_dir = os.path.join(git_dir, f"{args.repo}-{args.owner}")
-        params_dir = os.path.join(git_dir, f"{args.params_repo}-{args.owner}")
-        params_repo = f"{args.params_repo}-{args.owner}"
+    release_pipeline = f"tkgi-{repo}-release"
+    logger.info(f"Using release pipeline: {release_pipeline}")
+    logger.info(f"Using git directory: {git_dir}")
+    logger.info(f"Using repo directory: {repo_dir}")
+    logger.info(f"Using params directory: {params_dir}")
+    logger.info(f"Using params repo: {params_repo}")
+    logger.info(f"Using repo: {repo}")
+    logger.info(f"Using owner: {owner}")
+
+    # Initialize helpers
+    release_helper = ReleaseHelper(
+        repo=repo,
+        git_dir=git_dir,
+        repo_dir=repo_dir,
+        owner=owner,
+        params_dir=params_dir,
+        params_repo=params_repo,
+    )
+    git_helper = GitHelper(
+        git_dir=git_dir, repo=repo, repo_dir=repo_dir, params=params_repo, params_dir=params_dir
+    )
+    if not git_helper.check_git_repo():
+        raise ValueError(f"{repo} is not a git repository")
 
     pipeline = DemoReleasePipeline(
-        foundation=args.foundation,
-        repo=args.repo,
+        git_helper=git_helper,
+        release_helper=release_helper,
+        concourse_client=ConcourseClient(),
+        foundation=foundation,
+        repo=repo,
         repo_dir=repo_dir,
-        owner=args.owner,
-        branch=args.branch,
+        owner=owner,
+        branch=branch,
         params_repo=params_repo,
         params_dir=params_dir,
-        params_branch=args.params_branch,
-        release_tag=args.tag,
-        release_body=args.message,
-        dry_run=args.dry_run,
+        params_branch=params_branch,
+        release_tag=release_tag,
+        release_body=message,
+        dry_run=dry_run,
     )
 
     pipeline.run()
