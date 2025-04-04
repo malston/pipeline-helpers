@@ -41,9 +41,10 @@
    - Comprehensive logging for operations
 
 8. **Configuration Management**:
-   - Environment variables for configurable settings (e.g., `GIT_WORKSPACE`, `GITHUB_TOKEN`)
+   - Environment variables for configurable settings (e.g., `GIT_WORKSPACE`, `GITHUB_TOKEN`, `PIPELINE_HELPERS_LOG_TO_FILE`)
    - Smart defaults that can be overridden (e.g., home directory expansion)
    - Path normalization and standardization
+   - Preference for environment variables over command-line flags for global settings
 
 9. **User Interaction**:
    - Colorized console output for better readability

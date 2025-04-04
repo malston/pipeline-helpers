@@ -22,7 +22,7 @@ This Python package provides utilities for managing GitHub releases with Concour
    - `release_helper.py`: Handles release-specific logic
    - `concourse.py`: Interacts with Concourse CI through the fly CLI
    - `github.py`: Communicates with the GitHub API
-   - `logger.py`: Provides structured and color-formatted logging
+   - `logger.py`: Provides structured and color-formatted logging (see [logging.md](logging.md))
    - `error_handler.py`: Manages exception handling and error reporting
 
 4. **Architecture**:
