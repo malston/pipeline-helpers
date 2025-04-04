@@ -319,11 +319,8 @@ class ReleaseHelper:
             logger.error(f"Failed to update git release tag: {e}")
             raise
 
-    def run_release_pipeline(self, foundation: str, message_body: str = "") -> bool:
+    def run_release_pipeline(self, foundation: str, pipeline: str, message_body: str = "") -> bool:
         """Run the release pipeline."""
-        pipeline = f"tkgi-{self.repo}-release"
-        if self.owner != "Utilities-tkgieng":
-            pipeline = f"tkgi-{self.repo}-{self.owner}-release"
         logger.info(f"Running {pipeline} pipeline...")
 
         if not self.git_helper.confirm("Do you want to continue?"):
@@ -445,26 +442,3 @@ class ReleaseHelper:
             if hasattr(e, "output") and e.output:
                 logger.error(f"Output: {e.output.decode()}")
             raise
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Release management helper script")
-    parser.add_argument("-f", "--foundation", required=True, help="Foundation name for ops manager")
-    parser.add_argument("-m", "--message", help="Message to apply to the release")
-    parser.add_argument("-o", "--owner", default="Utilities-tkgieng", help="GitHub owner")
-    parser.add_argument("-p", "--params-repo", default="params", help="Params repo name")
-    parser.add_argument("--repo", default="ns-mgmt", help="Repository name")
-    args = parser.parse_args()
-
-    helper = ReleaseHelper(repo=args.repo, owner=args.owner, params_repo=args.params_repo)
-
-    # Run release pipeline
-    if helper.run_release_pipeline(args.foundation, args.message):
-        # Update git release tag
-        helper.update_params_git_release_tag()
-        # Run set pipeline
-        helper.run_set_pipeline(args.foundation)
-
-
-if __name__ == "__main__":
-    main()

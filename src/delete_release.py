@@ -111,13 +111,6 @@ def main() -> None:
     path_helper = RepositoryPathHelper(git_dir=git_dir, owner=owner)
     repo, repo_dir = path_helper.adjust_path(repo)
 
-    # Check if repo ends with the owner
-    # repo_dir = os.path.join(git_dir, repo)
-    # if args.owner != "Utilities-tkgieng":
-    #     repo_dir = os.path.join(git_dir, f"{repo}-{args.owner}")
-    # if not os.path.isdir(repo_dir):
-    #     raise ValueError(f"Could not find repo directory: {repo_dir}")
-
     # Initialize helpers
     release_helper = ReleaseHelper(
         repo=repo,

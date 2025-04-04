@@ -113,6 +113,8 @@ def main() -> None:
     repo, repo_dir, params_repo, params_dir = path_helper.adjust_paths(repo, params_repo)
 
     release_pipeline = f"tkgi-{repo}-release"
+    if owner != "Utilities-tkgieng":
+        release_pipeline = f"tkgi-{repo}-{owner}-release"
     logger.info(f"Using release pipeline: {release_pipeline}")
     logger.info(f"Using git directory: {git_dir}")
     logger.info(f"Using repo directory: {repo_dir}")
@@ -154,7 +156,7 @@ def main() -> None:
         logger.info(f"Changed to directory: {ci_dir}")
 
     # Run release pipeline
-    if not release_helper.run_release_pipeline(foundation, message):
+    if not release_helper.run_release_pipeline(foundation, release_pipeline, message):
         raise ValueError("Failed to run release pipeline")
 
     # Update git release tag

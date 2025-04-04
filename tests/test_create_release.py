@@ -70,8 +70,12 @@ def main_test_function():
         os.chdir(ci_dir)
         logger.info(f"Changed to directory: {ci_dir}")
 
+    release_pipeline = f"tkgi-{repo}-release"
+    if args.owner != "Utilities-tkgieng":
+        release_pipeline = f"tkgi-{repo}-{args.owner}-release"
+
     # Run release pipeline
-    if not release_helper.run_release_pipeline(args.foundation, args.message):
+    if not release_helper.run_release_pipeline(args.foundation, release_pipeline, args.message):
         raise ValueError("Failed to run release pipeline")
 
     # Update git release tag
@@ -236,7 +240,7 @@ def test_main_success_flow(
             # Verify the workflow
             mock_chdir.assert_called_once()
             mock_release_helper.return_value.run_release_pipeline.assert_called_once_with(
-                "foundation", "Test release"
+                "foundation", "tkgi-repo-release", "Test release"
             )
             mock_release_helper.return_value.update_params_git_release_tag.assert_called_once()
             mock_release_helper.return_value.run_set_pipeline.assert_called_once_with("foundation")
