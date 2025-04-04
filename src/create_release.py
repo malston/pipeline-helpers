@@ -3,7 +3,9 @@
 import argparse
 import os
 import subprocess
+from pathlib import Path
 
+from src.helpers.command_helper import CommandHelper
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.concourse import ConcourseClient
 from src.helpers.error_handler import wrap_main
@@ -28,6 +30,7 @@ Options:
    -m release_body  the message to apply to the release that is created (optional)
    -o owner         the github owner (default: Utilities-tkgieng)
    -p params_repo   the params repo name always located under ~/git (default: params)
+   -w dir           the base directory containing git repositories (default: $GIT_WORKSPACE or ~/git)
    --dry-run        run in dry-run mode (no changes will be made)
    -h               display usage
 """,
@@ -62,6 +65,14 @@ Options:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
+        "-w",
+        "--git-dir",
+        "--workspace",
+        default=os.environ.get("GIT_WORKSPACE", str(Path.home() / "git")),
+        type=str,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help=argparse.SUPPRESS,
@@ -80,33 +91,61 @@ def main() -> None:
     """Main function to create a new release."""
     args = parse_args()
 
-    # Process the repo and params values
     repo = args.repo
     params_repo = args.params_repo
-    release_pipeline = f"tkgi-{repo}-release"
+    owner = args.owner
+    git_dir = args.git_dir
+    foundation = args.foundation
+    message = args.message
+    dry_run = args.dry_run
+
+    if not os.path.isdir(git_dir):
+        raise ValueError(f"Could not find git directory: {git_dir}")
+    if not os.path.isdir(os.path.join(git_dir, repo)):
+        raise ValueError(f"Could not find repo directory: {git_dir}/{repo}")
 
     logger.info(f"Creating release for repo: {repo}")
-    logger.info(f"Foundation: {args.foundation}")
+    logger.info(f"Foundation: {foundation}")
 
-    if args.owner != "Utilities-tkgieng":
-        repo = f"{repo}-{args.owner}"
-        params_repo = f"{params_repo}-{args.owner}"
-        release_pipeline = f"tkgi-{repo}-release"
+    repo_dir = os.path.join(git_dir, repo)
+    params_dir = os.path.join(git_dir, params_repo)
+    command_helper = CommandHelper(git_dir=git_dir, owner=owner)
+    repo, repo_dir, params_repo, params_dir = command_helper.adjust_repo_and_params_paths(
+        repo, params_repo
+    )
+
+    release_pipeline = f"tkgi-{repo}-release"
+    logger.info(f"Using release pipeline: {release_pipeline}")
+    logger.info(f"Using git directory: {git_dir}")
+    logger.info(f"Using repo directory: {repo_dir}")
+    logger.info(f"Using params directory: {params_dir}")
+    logger.info(f"Using params repo: {params_repo}")
+    logger.info(f"Using repo: {repo}")
+    logger.info(f"Using owner: {owner}")
 
     # Initialize helpers
-    git_helper = GitHelper(repo=repo)
+    release_helper = ReleaseHelper(
+        repo=repo,
+        git_dir=git_dir,
+        repo_dir=repo_dir,
+        owner=owner,
+        params_dir=params_dir,
+        params_repo=params_repo,
+    )
+    git_helper = GitHelper(
+        git_dir=git_dir, repo=repo, repo_dir=repo_dir, params=params_repo, params_dir=params_dir
+    )
     if not git_helper.check_git_repo():
-        raise ValueError("Git is not installed or not in PATH")
+        raise ValueError(f"{repo} is not a git repository")
 
-    release_helper = ReleaseHelper(repo=repo, owner=args.owner, params_repo=params_repo)
     concourse_client = ConcourseClient()
 
     # Change to the repo's ci directory
-    ci_dir = os.path.expanduser(f"~/git/{repo}/ci")
+    ci_dir = os.path.join(git_dir, repo, "ci")
     if not os.path.exists(ci_dir):
         raise ValueError(f"CI directory not found at {ci_dir}")
 
-    if args.dry_run:
+    if dry_run:
         logger.info("DRY RUN MODE - No changes will be made")
         logger.info(f"Would change to directory: {ci_dir}")
         logger.info(f"Would run release pipeline: {release_pipeline}")
@@ -117,7 +156,7 @@ def main() -> None:
         logger.info(f"Changed to directory: {ci_dir}")
 
     # Run release pipeline
-    if not release_helper.run_release_pipeline(args.foundation, args.message):
+    if not release_helper.run_release_pipeline(foundation, message):
         raise ValueError("Failed to run release pipeline")
 
     # Update git release tag
@@ -125,14 +164,14 @@ def main() -> None:
         raise ValueError("Failed to update git release tag")
 
     # Run set pipeline
-    if not release_helper.run_set_pipeline(args.foundation):
+    if not release_helper.run_set_pipeline(foundation):
         raise ValueError("Failed to run set pipeline")
 
     # Ask user if they want to trigger a job
     trigger_response = input("Do you want to trigger a prepare-kustomizations job? [y/N] ")
     if trigger_response.lower().startswith("y"):
         concourse_client.trigger_job(
-            args.foundation, f"tkgi-{repo}-{args.foundation}/prepare-kustomizations", watch=True
+            foundation, f"tkgi-{repo}-{foundation}/prepare-kustomizations", watch=True
         )
 
     # Ask user if they want to run fly.sh script
@@ -147,7 +186,7 @@ def main() -> None:
             [
                 fly_script_path,
                 "-f",
-                args.foundation,
+                foundation,
                 "-b",
                 current_branch,
             ],
