@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
-from src.helpers.error_handler import setup_error_logging, wrap_main
+from src.helpers.error_handler import wrap_main
 from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
 from src.helpers.release_helper import ReleaseHelper
@@ -26,7 +26,6 @@ Options:
   -p params_repo   the params repo name always located under ~/git (default: params)
   -o owner         the github owner (default: Utilities-tkgieng)
   -w dir           the base directory containing git repositories (default: $GIT_WORKSPACE or ~/git)
-  --log-to-file    write logs to a file in addition to console output
   -h, --help       display this help message and exit
 """,
     )
@@ -52,11 +51,6 @@ Options:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--log-to-file",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "-h",
         "--help",
         action="help",
@@ -69,10 +63,6 @@ Options:
 def main() -> None:
     """Main function to update the release tag in the params repo."""
     args = parse_args()
-    # If --log-to-file is specified, set up logging to file
-    if args.log_to_file:
-        setup_error_logging()
-        logger.info("Logging to file enabled")
 
     repo = args.repo
     params_repo = args.params_repo

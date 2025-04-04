@@ -6,7 +6,7 @@ import subprocess
 
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.concourse import ConcourseClient
-from src.helpers.error_handler import setup_error_logging, wrap_main
+from src.helpers.error_handler import wrap_main
 from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
 from src.helpers.release_helper import ReleaseHelper
@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
         formatter_class=CustomHelpFormatter,
         add_help=False,
         usage="%(prog)s -f foundation -r repo [-m release_body] [-o owner] "
-        "[-p params_repo] [--dry-run] [--log-to-file] [-h]",
+        "[-p params_repo] [--dry-run] [-h]",
         epilog="""
 Options:
    -f foundation    the foundation name for ops manager (e.g. cml-k8s-n-01)
@@ -29,7 +29,6 @@ Options:
    -o owner         the github owner (default: Utilities-tkgieng)
    -p params_repo   the params repo name always located under ~/git (default: params)
    --dry-run        run in dry-run mode (no changes will be made)
-   --log-to-file    write logs to a file in addition to console output
    -h               display usage
 """,
     )
@@ -68,11 +67,6 @@ Options:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--log-to-file",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "-h",
         "--help",
         action="help",
@@ -85,11 +79,6 @@ Options:
 def main() -> None:
     """Main function to create a new release."""
     args = parse_args()
-
-    # If --log-to-file is specified, set up logging to file
-    if args.log_to_file:
-        setup_error_logging()
-        logger.info("Logging to file enabled")
 
     # Process the repo and params values
     repo = args.repo

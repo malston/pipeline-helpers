@@ -18,8 +18,17 @@ def setup_error_logging(log_file: Optional[str] = None, console_level: int = log
         console_level: Logging level for console output (default: INFO)
 
     Returns:
-        The path to the log file
+        The path to the log file or None if file logging is disabled
     """
+    # Check if file logging is enabled via environment variable
+    # If PIPELINE_HELPERS_LOG_TO_FILE is not set or set to 0/false/no, file logging is disabled
+    env_log_to_file = os.environ.get("PIPELINE_HELPERS_LOG_TO_FILE", "").lower()
+    file_logging_enabled = env_log_to_file not in ("", "0", "false", "no", "off")
+
+    # If file logging is disabled, return None
+    if not file_logging_enabled and log_file is None:
+        return None
+
     # Determine the log file location if not provided
     if log_file is None:
         log_dir = os.path.expanduser("~/.pipeline-helpers/logs")
@@ -41,6 +50,7 @@ def setup_error_logging(log_file: Optional[str] = None, console_level: int = log
         file_handler.setFormatter(file_formatter)
         file_handler.setLevel(logging.DEBUG)
         pipeline_logger.addHandler(file_handler)
+        logger.info(f"Logging to file: {log_file}")
 
     return log_file
 
@@ -82,6 +92,9 @@ def wrap_main(main_func: Callable) -> Callable:
 
     This decorator catches ValueError exceptions, logs them, and provides a user-friendly message.
 
+    File logging can be enabled by setting the PIPELINE_HELPERS_LOG_TO_FILE environment variable
+    to any value except 0, false, no, or off.
+
     Args:
         main_func: The main function to wrap
 
@@ -90,7 +103,7 @@ def wrap_main(main_func: Callable) -> Callable:
     """
 
     def wrapped_main(*args, **kwargs):
-        # Set up logging to file for the entire script execution
+        # Set up logging to file for the entire script execution based on environment variable
         log_file = setup_error_logging()
 
         try:

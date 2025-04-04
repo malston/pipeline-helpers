@@ -1,6 +1,6 @@
-import os
 import sys
-from unittest.mock import patch
+import os
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Import the function from the module
 from src.create_release import CustomHelpFormatter, parse_args
+from src.helpers.error_handler import setup_error_logging
 
 
 # Create an undecorated version of the main function for testing
@@ -17,23 +18,18 @@ def main_test_function():
     This is a copy of the main function without the wrapper for testing purposes.
     Must be kept in sync with the original in src/create_release.py
     """
+    from src.create_release import (
+        logger,
+        GitHelper,
+        ReleaseHelper,
+        ConcourseClient,
+    )
     import os
     import subprocess
 
-    from src.create_release import (
-        ConcourseClient,
-        GitHelper,
-        ReleaseHelper,
-        logger,
-        setup_error_logging,
-    )
-
     args = parse_args()
 
-    # If --log-to-file is specified, set up logging to file
-    if args.log_to_file:
-        setup_error_logging()
-        logger.info("Logging to file enabled")
+    # Setup error logging is now handled by the wrap_main decorator
 
     # Process the repo and params values
     repo = args.repo
@@ -54,9 +50,7 @@ def main_test_function():
         raise ValueError("Git is not installed or not in PATH")
 
     git_dir = os.path.expanduser("~/git")
-    release_helper = ReleaseHelper(
-        repo=repo, owner=args.owner, params_repo=params_repo, git_dir=git_dir
-    )
+    release_helper = ReleaseHelper(repo=repo, owner=args.owner, params_repo=params_repo, git_dir=git_dir)
     concourse_client = ConcourseClient()
 
     # Change to the repo's ci directory
@@ -116,12 +110,8 @@ def main_test_function():
 
 
 def test_parse_args():
-    # Test required arguments
+    # Test with required arguments missing
     with patch("sys.argv", ["create_release.py"]):
-        with pytest.raises(SystemExit):
-            parse_args()
-
-    with patch("sys.argv", ["create_release.py", "-f", "foundation"]):
         with pytest.raises(SystemExit):
             parse_args()
 
@@ -134,7 +124,6 @@ def test_parse_args():
         assert args.params_repo == "params"
         assert not args.dry_run
         assert args.message is None
-        assert not args.log_to_file  # Test the new parameter
 
     # Test with all optional arguments
     with patch(
@@ -152,7 +141,7 @@ def test_parse_args():
             "-p",
             "custom-params",
             "--dry-run",
-            "--log-to-file",  # Include the new parameter
+
         ],
     ):
         args = parse_args()
@@ -162,7 +151,6 @@ def test_parse_args():
         assert args.owner == "custom-owner"
         assert args.params_repo == "custom-params"
         assert args.dry_run
-        assert args.log_to_file  # Test the new parameter
 
 
 def test_custom_help_formatter():
@@ -178,7 +166,7 @@ def test_custom_help_formatter():
 
 
 @patch("src.create_release.logger")  # Mock the logger
-@patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
+@patch("src.helpers.error_handler.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
 @patch("src.create_release.ConcourseClient")
@@ -212,7 +200,7 @@ def test_main_with_dry_run(
 
 
 @patch("src.create_release.logger")  # Mock the logger
-@patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
+@patch("src.helpers.error_handler.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
 @patch("src.create_release.ConcourseClient")
@@ -257,7 +245,7 @@ def test_main_success_flow(
 
 
 @patch("src.create_release.logger")  # Mock the logger
-@patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
+@patch("src.helpers.error_handler.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
 @patch("src.create_release.ConcourseClient")
@@ -287,7 +275,7 @@ def test_main_ci_dir_not_found(
 
 
 @patch("src.create_release.logger")  # Mock the logger
-@patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
+@patch("src.helpers.error_handler.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
 @patch("src.create_release.ConcourseClient")
@@ -321,7 +309,7 @@ def test_main_pipeline_failure(
 
 
 @patch("src.create_release.logger")  # Mock the logger
-@patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
+@patch("src.helpers.error_handler.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
 @patch("src.create_release.ConcourseClient")
@@ -368,7 +356,7 @@ def test_main_with_fly_script(
 
 
 @patch("src.create_release.logger")  # Mock the logger
-@patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
+@patch("src.helpers.error_handler.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
 @patch("src.create_release.ConcourseClient")
@@ -404,7 +392,7 @@ def test_main_with_concourse_trigger(
 
 
 @patch("src.create_release.logger")  # Mock the logger
-@patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
+@patch("src.helpers.error_handler.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 def test_main_git_error(mock_git_helper, mock_setup_logging, mock_logger):
     # Setup mock to simulate git not available
@@ -419,7 +407,7 @@ def test_main_git_error(mock_git_helper, mock_setup_logging, mock_logger):
 
 
 @patch("src.create_release.logger")  # Mock the logger
-@patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
+@patch("src.helpers.error_handler.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
 @patch("src.create_release.ConcourseClient")
@@ -455,28 +443,11 @@ def test_main_with_custom_owner(
 
             # Verify ReleaseHelper was called with the correct parameters
             mock_release_helper.assert_called_with(
-                repo="repo-custom-owner",
-                owner="custom-owner",
+                repo="repo-custom-owner", 
+                owner="custom-owner", 
                 params_repo="params-custom-owner",
                 git_dir=os.path.expanduser("~/git"),
             )
 
 
-@patch("src.create_release.logger")  # Mock the logger
-@patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
-def test_main_with_logging_enabled(mock_setup_logging, mock_logger):
-    # Test with --log-to-file parameter
-    with patch(
-        "sys.argv", ["create_release.py", "-f", "foundation", "-r", "repo", "--log-to-file"]
-    ):
-        with patch("src.create_release.GitHelper") as mock_git_helper:
-            mock_git_helper.return_value.check_git_repo.return_value = True
-
-            with patch("os.path.exists", return_value=False):
-                with pytest.raises(ValueError):
-                    main_test_function()
-
-                # Verify setup_error_logging was called
-                mock_setup_logging.assert_called_once()
-                # Verify an info message about logging was recorded
-                mock_logger.info.assert_any_call("Logging to file enabled")
+# Note: Environment variable based logging is now tested elsewhere

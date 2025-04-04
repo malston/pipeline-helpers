@@ -33,7 +33,6 @@ Options:
 - `-o owner`: The GitHub owner (default: Utilities-tkgieng)
 - `-p params_repo`: The params repo name (default: params)
 - `--dry-run`: Run in dry-run mode - no changes will be made
-- `--log-to-file`: Enable file logging in addition to console output
 
 ### Delete Release
 
@@ -72,19 +71,26 @@ Options:
 - `-o owner`: The GitHub owner (default: Utilities-tkgieng)
 - `-p params_repo`: The params repo name (default: params)
 - `-w git_dir`: The base directory containing git repositories (default: $GIT_WORKSPACE or ~/git)
-- `--log-to-file`: Enable file logging in addition to console output
 
 ## Logging
 
 The package uses a customized logging system that supports both console and file-based logging:
 
 - Console output is colored by default for better readability
-- File logging can be enabled with the `--log-to-file` flag in scripts
+- File logging can be enabled with the `PIPELINE_HELPERS_LOG_TO_FILE` environment variable
 - Log files are stored in `~/.pipeline-helpers/logs/` by default
 
 Example with file logging:
 ```bash
-create-release -f foundation_name -r repo --log-to-file
+export PIPELINE_HELPERS_LOG_TO_FILE=1
+create-release -f foundation_name -r repo
+```
+
+To disable file logging:
+```bash
+export PIPELINE_HELPERS_LOG_TO_FILE=0
+# or unset the variable
+unset PIPELINE_HELPERS_LOG_TO_FILE
 ```
 
 ### Using the Logger in Code
