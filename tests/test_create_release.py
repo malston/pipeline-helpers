@@ -1,6 +1,6 @@
-import sys
 import os
-from unittest.mock import patch, MagicMock
+import sys
+from unittest.mock import patch
 
 import pytest
 
@@ -9,7 +9,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Import the function from the module
 from src.create_release import CustomHelpFormatter, parse_args
-from src.helpers.error_handler import setup_error_logging
 
 
 # Create an undecorated version of the main function for testing
@@ -18,14 +17,15 @@ def main_test_function():
     This is a copy of the main function without the wrapper for testing purposes.
     Must be kept in sync with the original in src/create_release.py
     """
-    from src.create_release import (
-        logger,
-        GitHelper,
-        ReleaseHelper,
-        ConcourseClient,
-    )
     import os
     import subprocess
+
+    from src.create_release import (
+        ConcourseClient,
+        GitHelper,
+        ReleaseHelper,
+        logger,
+    )
 
     args = parse_args()
 
@@ -50,7 +50,9 @@ def main_test_function():
         raise ValueError("Git is not installed or not in PATH")
 
     git_dir = os.path.expanduser("~/git")
-    release_helper = ReleaseHelper(repo=repo, owner=args.owner, params_repo=params_repo, git_dir=git_dir)
+    release_helper = ReleaseHelper(
+        repo=repo, owner=args.owner, params_repo=params_repo, git_dir=git_dir
+    )
     concourse_client = ConcourseClient()
 
     # Change to the repo's ci directory
@@ -141,7 +143,6 @@ def test_parse_args():
             "-p",
             "custom-params",
             "--dry-run",
-
         ],
     ):
         args = parse_args()
@@ -443,8 +444,8 @@ def test_main_with_custom_owner(
 
             # Verify ReleaseHelper was called with the correct parameters
             mock_release_helper.assert_called_with(
-                repo="repo-custom-owner", 
-                owner="custom-owner", 
+                repo="repo-custom-owner",
+                owner="custom-owner",
                 params_repo="params-custom-owner",
                 git_dir=os.path.expanduser("~/git"),
             )
