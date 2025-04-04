@@ -139,7 +139,9 @@ custom_logger = get_logger(
    
 5. Or use the Makefile:
    ```bash
+   make dev && source .venv/bin/activate
    make test
+   make format
    make lint
    ```
 
