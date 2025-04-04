@@ -317,7 +317,7 @@ class ReleaseHelper:
             return True
         except (IOError, OSError, ValueError, git.exc.GitError) as e:
             logger.error(f"Failed to update git release tag: {e}")
-            return False
+            raise
 
     def run_release_pipeline(self, foundation: str, message_body: str = "") -> bool:
         """Run the release pipeline."""

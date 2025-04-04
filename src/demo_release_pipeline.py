@@ -5,7 +5,7 @@ import os
 import re
 import subprocess
 import sys
-from typing import List, Optional
+from typing import Optional
 
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.concourse import ConcourseClient

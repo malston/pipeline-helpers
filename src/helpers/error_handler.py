@@ -1,13 +1,13 @@
 """Error handling utilities for pipeline helpers."""
 
+import logging
 import os
 import sys
 import traceback
-import logging
 from datetime import datetime
-from typing import Optional, Callable
+from typing import Callable, Optional
 
-from src.helpers.logger import default_logger as logger, configure
+from src.helpers.logger import default_logger as logger
 
 
 def setup_error_logging(log_file: Optional[str] = None, console_level: int = logging.INFO) -> str:
@@ -27,45 +27,20 @@ def setup_error_logging(log_file: Optional[str] = None, console_level: int = log
         timestamp = datetime.now().strftime("%Y%m%d")
         log_file = os.path.join(log_dir, f"pipeline-helpers-{timestamp}.log")
 
-    # Get the root logger
-    root_logger = logging.getLogger()
+    # Configure the logger module to use the file
+    # but don't add handlers to the root logger to avoid duplicate console output
+    pipeline_logger = logger.logger
 
-    # Remove any existing handlers to avoid duplicates
-    for handler in root_logger.handlers[:]:
-        root_logger.removeHandler(handler)
+    # Don't add a file handler if one already exists
+    has_file_handler = any(isinstance(h, logging.FileHandler) for h in pipeline_logger.handlers)
 
-    # Set the base logging level
-    root_logger.setLevel(logging.DEBUG)
-
-    # Create file handler for all detailed logs
-    file_handler = logging.FileHandler(log_file)
-    file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    file_handler.setFormatter(file_formatter)
-    file_handler.setLevel(logging.DEBUG)
-    root_logger.addHandler(file_handler)
-
-    # Create console handler with higher level and no error messages
-    # (we'll handle errors separately with colored output)
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_formatter = logging.Formatter("%(message)s")
-    console_handler.setFormatter(console_formatter)
-    console_handler.setLevel(console_level)
-
-    # Add a filter to prevent error messages and stack traces in console
-    class ConsoleFilter(logging.Filter):
-        def filter(self, record):
-            # Skip error messages, stack traces or multi-line messages
-            if (
-                record.levelno >= logging.ERROR
-                or record.getMessage().startswith("Stack trace:")
-                or record.getMessage().startswith("Error occurred:")
-                or "\n" in record.getMessage()
-            ):
-                return False
-            return True
-
-    console_handler.addFilter(ConsoleFilter())
-    root_logger.addHandler(console_handler)
+    if not has_file_handler and log_file:
+        # Create file handler for detailed logs
+        file_handler = logging.FileHandler(log_file)
+        file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        file_handler.setFormatter(file_formatter)
+        file_handler.setLevel(logging.DEBUG)
+        pipeline_logger.addHandler(file_handler)
 
     return log_file
 
@@ -85,8 +60,8 @@ def handle_error(error: Exception, exit_code: int = 1, log_file: Optional[str] =
     log_file = setup_error_logging(log_file, console_level=logging.ERROR)
 
     # Log the error and stack trace to file
-    logging.error(f"Error occurred: {str(error)}")
-    logging.error(f"Stack trace:\n{stack_trace}")
+    logger.error(f"Error occurred: {str(error)}")
+    logger.error(f"Stack trace:\n{stack_trace}")
 
     # Using ANSI color codes: Red for "Error:", Yellow for the message, Cyan for log file path
     RED = "\033[31m"
@@ -124,8 +99,8 @@ def wrap_main(main_func: Callable) -> Callable:
             handle_error(e, log_file=log_file)
         except Exception as e:
             # For other exceptions, still log them but re-raise
-            logging.error(f"Unexpected error: {str(e)}")
-            logging.error(f"Stack trace:\n{traceback.format_exc()}")
+            logger.error(f"Unexpected error: {str(e)}")
+            logger.error(f"Stack trace:\n{traceback.format_exc()}")
             raise
 
     # Preserve the original function's name and docstring

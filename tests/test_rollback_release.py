@@ -1,13 +1,13 @@
-import sys
 import os
 import subprocess
-from unittest.mock import MagicMock, patch
+import sys
+from unittest.mock import patch
 
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.rollback_release import CustomHelpFormatter, parse_args
+from src.rollback_release import parse_args
 
 
 # Create an undecorated version of the main function for testing
@@ -16,9 +16,10 @@ def main_test_function():
     This is a copy of the main function without the wrapper for testing purposes.
     Must be kept in sync with the original in src/rollback_release.py
     """
-    from src.rollback_release import GitHelper, ReleaseHelper
     import os
     import subprocess
+
+    from src.rollback_release import GitHelper, ReleaseHelper
 
     args = parse_args()
     repo = "ns-mgmt"
@@ -70,7 +71,7 @@ def main_test_function():
                 check=True,
             )
         except subprocess.CalledProcessError as e:
-            raise ValueError(f"Failed to trigger pipeline job: {e}")
+            raise ValueError(f"Failed to trigger pipeline job: {e}") from e
 
 
 def test_parse_args():

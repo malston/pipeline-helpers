@@ -13,18 +13,24 @@ class TestReleaseHelper(unittest.TestCase):
         """Set up test fixtures before each test method."""
         self.patcher1 = patch("src.helpers.release_helper.GitHelper")
         self.patcher2 = patch("src.helpers.release_helper.logger")
+        self.patcher3 = patch("src.helpers.release_helper.GitHubClient")
 
         self.mock_git_helper = self.patcher1.start()
         self.mock_logger = self.patcher2.start()
+        self.mock_github_client = self.patcher3.start()
 
         # Setup mock GitHelper instance
         self.mock_git = self.mock_git_helper.return_value
         self.mock_git.check_git_repo.return_value = True
 
+        # Setup mock GitHub client
+        self.mock_github = self.mock_github_client.return_value
+
         self.helper = ReleaseHelper(
             repo="test-repo",
             owner="test-owner",
             params_repo="test-params",
+            git_dir="/test/git",
             repo_dir="/test/repo",
             params_dir="/test/params",
         )
@@ -32,6 +38,7 @@ class TestReleaseHelper(unittest.TestCase):
     def tearDown(self):
         self.patcher1.stop()
         self.patcher2.stop()
+        self.patcher3.stop()
 
     def test_update_params_git_release_tag_success(self):
         """Test successful update of params git release tag."""

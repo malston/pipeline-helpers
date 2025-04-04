@@ -73,16 +73,20 @@ class GitHelper:
             origin = repo_obj.remotes.origin
             origin.pull(quiet=True)
         except Exception as e:
-            logger.error(f"Failed to pull changes: {e}")
+            logger.error(f"Failed to pull changes from {repo}: {e}")
 
     def pull_all(self, repo: Optional[str] = None) -> None:
         """Pull all changes from all remotes."""
         try:
             repo_obj = self._get_repo(repo)
             for remote in repo_obj.remotes:
-                remote.pull(quiet=True)
-        except Exception as e:
-            logger.error(f"Failed to pull changes: {e}")
+                remote.pull(quiet=True, kill_after_timeout=2)
+        except git.GitCommandError as e:
+            logger.error(f"Failed to pull changes from {repo}: {e}")
+            if "Timeout" in str(e):
+                logger.error("The command timed out.")
+        except ValueError as e:
+            logger.error(f"Failed to pull changes from {repo}: {e}")
 
     def get_current_branch(self, repo: Optional[str] = None) -> str:
         """Get the current branch name."""

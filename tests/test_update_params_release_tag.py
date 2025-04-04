@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 from unittest.mock import patch
 
 import pytest
@@ -15,8 +15,9 @@ def main_test_function():
     This is a copy of the main function without the wrapper for testing purposes.
     Must be kept in sync with the original in src/update_params_release_tag.py
     """
-    from src.update_params_release_tag import GitHelper, ReleaseHelper
     import os
+
+    from src.update_params_release_tag import GitHelper, ReleaseHelper
 
     args = parse_args()
     repo = args.repo

@@ -3,11 +3,10 @@
 import argparse
 import os
 import subprocess
-import logging
 
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.concourse import ConcourseClient
-from src.helpers.error_handler import wrap_main, setup_error_logging
+from src.helpers.error_handler import setup_error_logging, wrap_main
 from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
 from src.helpers.release_helper import ReleaseHelper
@@ -20,7 +19,8 @@ def parse_args() -> argparse.Namespace:
         description="Create a new release",
         formatter_class=CustomHelpFormatter,
         add_help=False,
-        usage="%(prog)s -f foundation -r repo [-m release_body] [-o owner] [-p params_repo] [--dry-run] [--log-to-file] [-h]",
+        usage="%(prog)s -f foundation -r repo [-m release_body] [-o owner] "
+               "[-p params_repo] [--dry-run] [--log-to-file] [-h]",
         epilog="""
 Options:
    -f foundation    the foundation name for ops manager (e.g. cml-k8s-n-01)
@@ -89,15 +89,15 @@ def main() -> None:
     # If --log-to-file is specified, set up logging to file
     if args.log_to_file:
         setup_error_logging()
-        logging.info("Logging to file enabled")
+        logger.info("Logging to file enabled")
 
     # Process the repo and params values
     repo = args.repo
     params_repo = args.params_repo
     release_pipeline = f"tkgi-{repo}-release"
 
-    logging.info(f"Creating release for repo: {repo}")
-    logging.info(f"Foundation: {args.foundation}")
+    logger.info(f"Creating release for repo: {repo}")
+    logger.info(f"Foundation: {args.foundation}")
 
     if args.owner != "Utilities-tkgieng":
         repo = f"{repo}-{args.owner}"
@@ -118,14 +118,14 @@ def main() -> None:
         raise ValueError(f"CI directory not found at {ci_dir}")
 
     if args.dry_run:
-        logging.info("DRY RUN MODE - No changes will be made")
-        logging.info(f"Would change to directory: {ci_dir}")
-        logging.info(f"Would run release pipeline: {release_pipeline}")
-        logging.info("Would update git release tag")
+        logger.info("DRY RUN MODE - No changes will be made")
+        logger.info(f"Would change to directory: {ci_dir}")
+        logger.info(f"Would run release pipeline: {release_pipeline}")
+        logger.info("Would update git release tag")
         return
     else:
         os.chdir(ci_dir)
-        logging.info(f"Changed to directory: {ci_dir}")
+        logger.info(f"Changed to directory: {ci_dir}")
 
     # Run release pipeline
     if not release_helper.run_release_pipeline(args.foundation, args.message):
@@ -165,7 +165,7 @@ def main() -> None:
             check=True,
         )
 
-    logging.info("Release process completed successfully")
+    logger.info("Release process completed successfully")
 
 
 if __name__ == "__main__":

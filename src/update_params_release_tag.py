@@ -2,11 +2,10 @@
 
 import argparse
 import os
-import logging
 from pathlib import Path
 
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
-from src.helpers.error_handler import wrap_main, setup_error_logging
+from src.helpers.error_handler import setup_error_logging, wrap_main
 from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
 from src.helpers.release_helper import ReleaseHelper
@@ -73,7 +72,7 @@ def main() -> None:
     # If --log-to-file is specified, set up logging to file
     if args.log_to_file:
         setup_error_logging()
-        logging.info("Logging to file enabled")
+        logger.info("Logging to file enabled")
 
     repo = args.repo
     params_repo = args.params_repo
@@ -107,12 +106,12 @@ def main() -> None:
     if not os.path.isdir(params_dir):
         raise ValueError(f"Could not find params directory: {params_dir}")
 
-    logging.info(f"Using git directory: {git_dir}")
-    logging.info(f"Using repo directory: {repo_dir}")
-    logging.info(f"Using params directory: {params_dir}")
-    logging.info(f"Using params repo: {params_repo}")
-    logging.info(f"Using repo: {repo}")
-    logging.info(f"Using owner: {owner}")
+    logger.info(f"Using git directory: {git_dir}")
+    logger.info(f"Using repo directory: {repo_dir}")
+    logger.info(f"Using params directory: {params_dir}")
+    logger.info(f"Using params repo: {params_repo}")
+    logger.info(f"Using repo: {repo}")
+    logger.info(f"Using owner: {owner}")
 
     os.chdir(repo_dir)
 

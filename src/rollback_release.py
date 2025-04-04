@@ -114,7 +114,7 @@ def main() -> None:
                 check=True,
             )
         except subprocess.CalledProcessError as e:
-            raise ValueError(f"Failed to trigger pipeline job: {e}")
+            raise ValueError(f"Failed to trigger pipeline job: {e}") from e
 
 
 if __name__ == "__main__":

@@ -11,31 +11,38 @@ from src.helpers.release_helper import ReleaseHelper
 
 
 def test_parse_args():
-    # Test required argument
+    # Test required arguments
     with patch("sys.argv", ["delete_release.py"]):
         with pytest.raises(SystemExit):
             parse_args()
 
+    # Test with required -t tag argument missing
+    with patch("sys.argv", ["delete_release.py", "-r", "repo"]):
+        with pytest.raises(SystemExit):
+            parse_args()
+
     # Test with valid arguments
-    with patch("sys.argv", ["delete_release.py", "-r", "v1.0.0"]):
+    with patch("sys.argv", ["delete_release.py", "-r", "repo", "-t", "v1.0.0"]):
         args = parse_args()
-        assert args.release_tag == "v1.0.0"
+        assert args.repo == "repo"
+        assert args.tag == "v1.0.0"
         assert args.owner == "Utilities-tkgieng"
         assert not args.no_tag_deletion
         assert not args.non_interactive
 
     # Test with custom owner
-    with patch("sys.argv", ["delete_release.py", "-r", "v1.0.0", "-o", "custom-owner"]):
+    test_args = ["delete_release.py", "-r", "repo", "-t", "v1.0.0", "-o", "custom-owner"]
+    with patch("sys.argv", test_args):
         args = parse_args()
         assert args.owner == "custom-owner"
 
     # Test with no tag deletion
-    with patch("sys.argv", ["delete_release.py", "-r", "v1.0.0", "-x"]):
+    with patch("sys.argv", ["delete_release.py", "-r", "repo", "-t", "v1.0.0", "-x"]):
         args = parse_args()
         assert args.no_tag_deletion
 
     # Test non-interactive mode
-    with patch("sys.argv", ["delete_release.py", "-r", "v1.0.0", "-n"]):
+    with patch("sys.argv", ["delete_release.py", "-r", "repo", "-t", "v1.0.0", "-n"]):
         args = parse_args()
         assert args.non_interactive
 
@@ -92,13 +99,15 @@ def test_delete_git_tag():
 @pytest.mark.parametrize(
     "input_args,expected_repo",
     [
-        (["-r", "v1.0.0"], "ns-mgmt"),
-        (["-r", "v1.0.0", "-o", "custom-owner"], "ns-mgmt-custom-owner"),
+        (["-r", "ns-mgmt", "-t", "v1.0.0"], "ns-mgmt"),
+        (["-r", "ns-mgmt", "-t", "v1.0.0", "-o", "custom-owner"], "ns-mgmt-custom-owner"),
     ],
 )
 def test_repo_name_construction(input_args, expected_repo):
-    with patch("helpers.git_helper.GitHelper") as mock_git_helper, patch(
-        "helpers.release_helper.ReleaseHelper"
+    git_dir = os.path.expanduser("~/git")
+
+    with patch("src.helpers.git_helper.GitHelper") as mock_git_helper, patch(
+        "src.helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(
@@ -119,11 +128,15 @@ def test_repo_name_construction(input_args, expected_repo):
             main()
 
             mock_git_helper.assert_called_once_with(
-                repo="ns-mgmt", repo_dir=os.path.join(os.path.expanduser("~"), "git", expected_repo)
+                git_dir=git_dir,
+                repo="ns-mgmt",
+                repo_dir=os.path.join(git_dir, expected_repo)
             )
 
 
 def test_release_not_found():
+    repo = "ns-mgmt"
+
     with patch("src.helpers.git_helper.GitHelper") as mock_git_helper, patch(
         "src.helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
@@ -142,7 +155,7 @@ def test_release_not_found():
         ]
         mock_git_helper.return_value.tag_exists.return_value = True
 
-        with patch("sys.argv", ["delete_release.py", "-r", "v3.0.0"]), patch(
+        with patch("sys.argv", ["delete_release.py", "-r", repo, "-t", "v3.0.0"]), patch(
             "builtins.input", return_value="y"
         ):
             # Run main without storing args
@@ -152,6 +165,9 @@ def test_release_not_found():
 
 
 def test_no_releases_found():
+    repo = "ns-mgmt"
+    tag = "v1.0.0"
+
     with patch("src.helpers.git_helper.GitHelper") as mock_git_helper, patch(
         "src.helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
@@ -167,7 +183,7 @@ def test_no_releases_found():
         mock_release_helper.return_value.get_releases.return_value = []
         mock_git_helper.return_value.tag_exists.return_value = True
 
-        with patch("sys.argv", ["delete_release.py", "-r", "v1.0.0"]), patch(
+        with patch("sys.argv", ["delete_release.py", "-r", repo, "-t", tag]), patch(
             "builtins.input", return_value="y"
         ):
             # Run main without storing args
@@ -175,19 +191,22 @@ def test_no_releases_found():
 
             # Check that info was called with "No releases found"
             mock_logger_info.assert_any_call("No releases found")
-            mock_release_helper.return_value.delete_release_tag.assert_called_once_with("v1.0.0")
+            mock_release_helper.return_value.delete_release_tag.assert_called_once_with(tag)
 
 
 def test_successful_deletion():
-    with patch("helpers.git_helper.GitHelper") as mock_git_helper, patch(
-        "helpers.release_helper.ReleaseHelper"
+    repo = "ns-mgmt"
+    tag = "v1.0.0"
+
+    with patch("src.helpers.git_helper.GitHelper") as mock_git_helper, patch(
+        "src.helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(
         "src.delete_release.ReleaseHelper", mock_release_helper
     ):
         mock_release = {
-            "tag_name": "v1.0.0",
+            "tag_name": tag,
             "name": "Release 1.0.0",
             "id": 12345,
         }
@@ -196,7 +215,7 @@ def test_successful_deletion():
         mock_release_helper.return_value.delete_github_release.return_value = True
         mock_git_helper.return_value.tag_exists.return_value = True
 
-        with patch("sys.argv", ["delete_release.py", "-r", "v1.0.0"]), patch(
+        with patch("sys.argv", ["delete_release.py", "-r", repo, "-t", tag]), patch(
             "builtins.input", return_value="y"
         ):
             # Run main without storing args
@@ -205,12 +224,15 @@ def test_successful_deletion():
             mock_release_helper.return_value.delete_github_release.assert_called_once_with(
                 mock_release.get("id")
             )
-            mock_release_helper.return_value.delete_release_tag.assert_called_once_with("v1.0.0")
+            mock_release_helper.return_value.delete_release_tag.assert_called_once_with(tag)
 
 
 def test_deletion_cancelled():
-    with patch("helpers.git_helper.GitHelper") as mock_git_helper, patch(
-        "helpers.release_helper.ReleaseHelper"
+    repo = "ns-mgmt"
+    tag = "v1.0.0"
+
+    with patch("src.helpers.git_helper.GitHelper") as mock_git_helper, patch(
+        "src.helpers.release_helper.ReleaseHelper"
     ) as mock_release_helper, patch("os.path.isdir", return_value=True), patch(
         "src.delete_release.GitHelper", mock_git_helper
     ), patch(
@@ -219,11 +241,11 @@ def test_deletion_cancelled():
 
         mock_git_helper.return_value.check_git_repo.return_value = True
         mock_release_helper.return_value.get_github_release_by_tag.return_value = {
-            "tag_name": "v1.0.0"
+            "tag_name": tag
         }
         mock_git_helper.return_value.tag_exists.return_value = True
 
-        with patch("sys.argv", ["delete_release.py", "-r", "v1.0.0"]), patch(
+        with patch("sys.argv", ["delete_release.py", "-r", repo, "-t", tag]), patch(
             "builtins.input", return_value="n"
         ):
             # Run main without storing args

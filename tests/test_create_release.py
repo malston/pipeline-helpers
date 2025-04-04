@@ -1,6 +1,6 @@
-import sys
 import os
-from unittest.mock import patch, MagicMock
+import sys
+from unittest.mock import patch
 
 import pytest
 
@@ -17,30 +17,31 @@ def main_test_function():
     This is a copy of the main function without the wrapper for testing purposes.
     Must be kept in sync with the original in src/create_release.py
     """
-    from src.create_release import (
-        logging,
-        setup_error_logging,
-        GitHelper,
-        ReleaseHelper,
-        ConcourseClient,
-    )
     import os
     import subprocess
+
+    from src.create_release import (
+        ConcourseClient,
+        GitHelper,
+        ReleaseHelper,
+        logger,
+        setup_error_logging,
+    )
 
     args = parse_args()
 
     # If --log-to-file is specified, set up logging to file
     if args.log_to_file:
         setup_error_logging()
-        logging.info("Logging to file enabled")
+        logger.info("Logging to file enabled")
 
     # Process the repo and params values
     repo = args.repo
     params_repo = args.params_repo
     release_pipeline = f"tkgi-{repo}-release"
 
-    logging.info(f"Creating release for repo: {repo}")
-    logging.info(f"Foundation: {args.foundation}")
+    logger.info(f"Creating release for repo: {repo}")
+    logger.info(f"Foundation: {args.foundation}")
 
     if args.owner != "Utilities-tkgieng":
         repo = f"{repo}-{args.owner}"
@@ -52,7 +53,10 @@ def main_test_function():
     if not git_helper.check_git_repo():
         raise ValueError("Git is not installed or not in PATH")
 
-    release_helper = ReleaseHelper(repo=repo, owner=args.owner, params_repo=params_repo)
+    git_dir = os.path.expanduser("~/git")
+    release_helper = ReleaseHelper(
+        repo=repo, owner=args.owner, params_repo=params_repo, git_dir=git_dir
+    )
     concourse_client = ConcourseClient()
 
     # Change to the repo's ci directory
@@ -61,14 +65,14 @@ def main_test_function():
         raise ValueError(f"CI directory not found at {ci_dir}")
 
     if args.dry_run:
-        logging.info("DRY RUN MODE - No changes will be made")
-        logging.info(f"Would change to directory: {ci_dir}")
-        logging.info(f"Would run release pipeline: {release_pipeline}")
-        logging.info("Would update git release tag")
+        logger.info("DRY RUN MODE - No changes will be made")
+        logger.info(f"Would change to directory: {ci_dir}")
+        logger.info(f"Would run release pipeline: {release_pipeline}")
+        logger.info("Would update git release tag")
         return
     else:
         os.chdir(ci_dir)
-        logging.info(f"Changed to directory: {ci_dir}")
+        logger.info(f"Changed to directory: {ci_dir}")
 
     # Run release pipeline
     if not release_helper.run_release_pipeline(args.foundation, args.message):
@@ -108,7 +112,7 @@ def main_test_function():
             check=True,
         )
 
-    logging.info("Release process completed successfully")
+    logger.info("Release process completed successfully")
 
 
 def test_parse_args():
@@ -173,7 +177,7 @@ def test_custom_help_formatter():
     assert hasattr(formatter, "format_help")
 
 
-@patch("src.create_release.logging")  # Mock the logging module
+@patch("src.create_release.logger")  # Mock the logger
 @patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
@@ -185,7 +189,7 @@ def test_main_with_dry_run(
     mock_release_helper,
     mock_git_helper,
     mock_setup_logging,
-    mock_logging,
+    mock_logger,
 ):
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
@@ -198,8 +202,8 @@ def test_main_with_dry_run(
         main_test_function()
 
         # Verify logger calls to confirm dry run behavior
-        assert mock_logging.info.call_count >= 3
-        mock_logging.info.assert_any_call("DRY RUN MODE - No changes will be made")
+        assert mock_logger.info.call_count >= 3
+        mock_logger.info.assert_any_call("DRY RUN MODE - No changes will be made")
 
         # Verify no actual operations were performed
         mock_release_helper.return_value.run_release_pipeline.assert_not_called()
@@ -207,7 +211,7 @@ def test_main_with_dry_run(
         mock_release_helper.return_value.run_set_pipeline.assert_not_called()
 
 
-@patch("src.create_release.logging")  # Mock the logging module
+@patch("src.create_release.logger")  # Mock the logger
 @patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
@@ -221,7 +225,7 @@ def test_main_success_flow(
     mock_release_helper,
     mock_git_helper,
     mock_setup_logging,
-    mock_logging,
+    mock_logger,
 ):
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
@@ -252,7 +256,7 @@ def test_main_success_flow(
             mock_concourse.return_value.trigger_job.assert_not_called()
 
 
-@patch("src.create_release.logging")  # Mock the logging module
+@patch("src.create_release.logger")  # Mock the logger
 @patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
@@ -264,7 +268,7 @@ def test_main_ci_dir_not_found(
     mock_release_helper,
     mock_git_helper,
     mock_setup_logging,
-    mock_logging,
+    mock_logger,
 ):
     # Setup mocks - CI directory doesn't exist
     mock_git_helper.return_value.check_git_repo.return_value = True
@@ -282,7 +286,7 @@ def test_main_ci_dir_not_found(
         mock_release_helper.return_value.run_release_pipeline.assert_not_called()
 
 
-@patch("src.create_release.logging")  # Mock the logging module
+@patch("src.create_release.logger")  # Mock the logger
 @patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
@@ -296,7 +300,7 @@ def test_main_pipeline_failure(
     mock_release_helper,
     mock_git_helper,
     mock_setup_logging,
-    mock_logging,
+    mock_logger,
 ):
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
@@ -316,7 +320,7 @@ def test_main_pipeline_failure(
         mock_release_helper.return_value.run_set_pipeline.assert_not_called()
 
 
-@patch("src.create_release.logging")  # Mock the logging module
+@patch("src.create_release.logger")  # Mock the logger
 @patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
@@ -332,7 +336,7 @@ def test_main_with_fly_script(
     mock_release_helper,
     mock_git_helper,
     mock_setup_logging,
-    mock_logging,
+    mock_logger,
 ):
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
@@ -363,7 +367,7 @@ def test_main_with_fly_script(
                 assert "develop" in call_args
 
 
-@patch("src.create_release.logging")  # Mock the logging module
+@patch("src.create_release.logger")  # Mock the logger
 @patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
@@ -377,7 +381,7 @@ def test_main_with_concourse_trigger(
     mock_release_helper,
     mock_git_helper,
     mock_setup_logging,
-    mock_logging,
+    mock_logger,
 ):
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
@@ -399,10 +403,10 @@ def test_main_with_concourse_trigger(
             )
 
 
-@patch("src.create_release.logging")  # Mock the logging module
+@patch("src.create_release.logger")  # Mock the logger
 @patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
-def test_main_git_error(mock_git_helper, mock_setup_logging, mock_logging):
+def test_main_git_error(mock_git_helper, mock_setup_logging, mock_logger):
     # Setup mock to simulate git not available
     mock_git_helper.return_value.check_git_repo.return_value = False
 
@@ -414,7 +418,7 @@ def test_main_git_error(mock_git_helper, mock_setup_logging, mock_logging):
         assert "Git is not installed or not in PATH" in str(excinfo.value)
 
 
-@patch("src.create_release.logging")  # Mock the logging module
+@patch("src.create_release.logger")  # Mock the logger
 @patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
 @patch("src.create_release.GitHelper")
 @patch("src.create_release.ReleaseHelper")
@@ -428,7 +432,7 @@ def test_main_with_custom_owner(
     mock_release_helper,
     mock_git_helper,
     mock_setup_logging,
-    mock_logging,
+    mock_logger,
 ):
     # Setup mocks
     mock_git_helper.return_value.check_git_repo.return_value = True
@@ -451,13 +455,16 @@ def test_main_with_custom_owner(
 
             # Verify ReleaseHelper was called with the correct parameters
             mock_release_helper.assert_called_with(
-                repo="repo-custom-owner", owner="custom-owner", params_repo="params-custom-owner"
+                repo="repo-custom-owner",
+                owner="custom-owner",
+                params_repo="params-custom-owner",
+                git_dir=os.path.expanduser("~/git"),
             )
 
 
-@patch("src.create_release.logging")  # Mock the logging module
+@patch("src.create_release.logger")  # Mock the logger
 @patch("src.create_release.setup_error_logging")  # Mock setup_error_logging
-def test_main_with_logging_enabled(mock_setup_logging, mock_logging):
+def test_main_with_logging_enabled(mock_setup_logging, mock_logger):
     # Test with --log-to-file parameter
     with patch(
         "sys.argv", ["create_release.py", "-f", "foundation", "-r", "repo", "--log-to-file"]
@@ -472,4 +479,4 @@ def test_main_with_logging_enabled(mock_setup_logging, mock_logging):
                 # Verify setup_error_logging was called
                 mock_setup_logging.assert_called_once()
                 # Verify an info message about logging was recorded
-                mock_logging.info.assert_any_call("Logging to file enabled")
+                mock_logger.info.assert_any_call("Logging to file enabled")
