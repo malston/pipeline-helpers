@@ -5,12 +5,12 @@ import os
 import subprocess
 from pathlib import Path
 
-from src.helpers.path_helper import RepositoryPathHelper
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.concourse import ConcourseClient
 from src.helpers.error_handler import wrap_main
 from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
+from src.helpers.path_helper import RepositoryPathHelper
 from src.helpers.release_helper import ReleaseHelper
 
 
@@ -29,8 +29,8 @@ Options:
    -r repo          the repo to use
    -m release_body  the message to apply to the release that is created (optional)
    -o owner         the github owner (default: Utilities-tkgieng)
-   -p params_repo   the params repo name always located under ~/git (default: params)
-   -w dir           the base directory containing git repositories (default: $GIT_WORKSPACE or ~/git)
+   -p params_repo   the params repo name always located under $GIT_WORKSPACE (default: params)
+   -w dir           the base directory containing git repositories (default: $GIT_WORKSPACE)
    --dry-run        run in dry-run mode (no changes will be made)
    -h               display usage
 """,
@@ -110,9 +110,7 @@ def main() -> None:
     repo_dir = os.path.join(git_dir, repo)
     params_dir = os.path.join(git_dir, params_repo)
     path_helper = RepositoryPathHelper(git_dir=git_dir, owner=owner)
-    repo, repo_dir, params_repo, params_dir = path_helper.adjust_repo_and_params_paths(
-        repo, params_repo
-    )
+    repo, repo_dir, params_repo, params_dir = path_helper.adjust_paths(repo, params_repo)
 
     release_pipeline = f"tkgi-{repo}-release"
     logger.info(f"Using release pipeline: {release_pipeline}")

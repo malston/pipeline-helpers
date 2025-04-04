@@ -4,11 +4,11 @@ import argparse
 import os
 from pathlib import Path
 
-from src.helpers.path_helper import RepositoryPathHelper
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.error_handler import wrap_main
 from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
+from src.helpers.path_helper import RepositoryPathHelper
 from src.helpers.release_helper import ReleaseHelper
 
 
@@ -87,9 +87,7 @@ def main() -> None:
     repo_dir = os.path.join(git_dir, repo)
     params_dir = os.path.join(git_dir, params_repo)
     path_helper = RepositoryPathHelper(git_dir=git_dir, owner=owner)
-    repo, repo_dir, params_repo, params_dir = path_helper.adjust_repo_and_params_paths(
-        repo, params_repo
-    )
+    repo, repo_dir, params_repo, params_dir = path_helper.adjust_paths(repo, params_repo)
 
     logger.info(f"Using git directory: {git_dir}")
     logger.info(f"Using repo directory: {repo_dir}")

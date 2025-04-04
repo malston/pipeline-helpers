@@ -4,10 +4,10 @@ import argparse
 import os
 from pathlib import Path
 
-from src.helpers.path_helper import RepositoryPathHelper
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
+from src.helpers.path_helper import RepositoryPathHelper
 from src.helpers.release_helper import ReleaseHelper
 
 
@@ -112,6 +112,7 @@ def main() -> None:
     repo, repo_dir = path_helper.adjust_path(repo)
 
     # Check if repo ends with the owner
+    # repo_dir = os.path.join(git_dir, repo)
     # if args.owner != "Utilities-tkgieng":
     #     repo_dir = os.path.join(git_dir, f"{repo}-{args.owner}")
     # if not os.path.isdir(repo_dir):

@@ -5,15 +5,15 @@ import os
 import re
 import subprocess
 import sys
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
-from src.helpers.path_helper import RepositoryPathHelper
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.concourse import ConcourseClient
 from src.helpers.error_handler import wrap_main
 from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
+from src.helpers.path_helper import RepositoryPathHelper
 from src.helpers.release_helper import ReleaseHelper
 
 
@@ -604,7 +604,7 @@ Options:
    -d params_branch  the params branch to use (default: master)
    -t tag            the release tag (default: latest)
    -m message        the message to apply to the release that is created
-   -w dir            the base directory containing git repositories (default: $GIT_WORKSPACE or ~/git)
+   -w dir            the base directory containing git repositories (default: $GIT_WORKSPACE)
    --dry-run         run in dry-run mode (no actual changes will be made)
    -h                display usage
 """,
@@ -699,9 +699,7 @@ Options:
     repo_dir = os.path.join(git_dir, repo)
     params_dir = os.path.join(git_dir, params_repo)
     path_helper = RepositoryPathHelper(git_dir=git_dir, owner=owner)
-    repo, repo_dir, params_repo, params_dir = path_helper.adjust_repo_and_params_paths(
-        repo, params_repo
-    )
+    repo, repo_dir, params_repo, params_dir = path_helper.adjust_paths(repo, params_repo)
 
     release_pipeline = f"tkgi-{repo}-release"
     logger.info(f"Using release pipeline: {release_pipeline}")

@@ -17,55 +17,6 @@ class RepositoryPathHelper:
         self.git_dir = git_dir
         self.owner = owner
 
-    def adjust_repo_and_params_paths(self, repo, params_repo):
-        """
-        Adjusts the repository and params repository paths based on the owner.
-
-        Args:
-            repo (str): The repository name.
-            params_repo (str): The params repository name.
-
-        Returns:
-            tuple: Adjusted repo, repo_dir, params_repo, and params_dir.
-        """
-        # Check if repo ends with the owner
-        repo_without_owner = None
-        if repo.endswith(self.owner):
-            repo_without_owner = repo[: -len(self.owner) - 1]
-
-        if repo_without_owner:
-            repo = repo_without_owner
-            repo_dir = os.path.join(self.git_dir, repo)
-        else:
-            repo_dir = os.path.join(self.git_dir, repo)
-
-        # Check if params_repo ends with the owner
-        params_repo_without_owner = None
-        if params_repo.endswith(self.owner):
-            params_repo_without_owner = params_repo[: -len(self.owner) - 1]
-
-        if params_repo_without_owner:
-            params_repo = params_repo_without_owner
-            params_dir = os.path.join(self.git_dir, params_repo)
-        else:
-            params_dir = os.path.join(self.git_dir, params_repo)
-
-        # Check if owner is not the default
-        if self.owner != "Utilities-tkgieng":
-            if repo_without_owner:
-                repo = f"{repo}-{self.owner}"
-                repo_dir = os.path.join(self.git_dir, repo)
-            if params_repo_without_owner:
-                params_repo = f"{params_repo}-{self.owner}"
-                params_dir = os.path.join(self.git_dir, params_repo)
-
-        if not os.path.isdir(repo_dir):
-            raise ValueError(f"Could not find repo directory: {repo_dir}")
-        if not os.path.isdir(params_dir):
-            raise ValueError(f"Could not find params directory: {params_dir}")
-
-        return repo, repo_dir, params_repo, params_dir
-
     def adjust_path(self, repo):
         """
         Adjusts the repository path.
@@ -80,6 +31,7 @@ class RepositoryPathHelper:
 
         if not os.path.isdir(repo_dir):
             raise ValueError(f"Could not find repo directory: {repo_dir}")
+
         return repo, repo_dir
 
     def adjust_paths(self, repo, params_repo):
@@ -118,13 +70,13 @@ class RepositoryPathHelper:
             name_without_owner = name[: -len(self.owner) - 1]
 
         if name_without_owner:
-            name = name_without_owner
-            dir_path = os.path.join(self.git_dir, name)
+            # name = name_without_owner
+            dir_path = os.path.join(self.git_dir, name_without_owner)
         else:
             dir_path = os.path.join(self.git_dir, name)
 
-        if self.owner != "Utilities-tkgieng" and name_without_owner:
-            name = f"{name}-{self.owner}"
-            dir_path = os.path.join(self.git_dir, name)
+        if self.owner != "Utilities-tkgieng":
+            # name = f"{name}-{self.owner}"
+            dir_path = os.path.join(self.git_dir, f"{name}-{self.owner}")
 
         return name, dir_path
