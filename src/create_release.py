@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
         formatter_class=CustomHelpFormatter,
         add_help=False,
         usage="%(prog)s -f foundation -r repo [-m release_body] [-o owner] "
-               "[-p params_repo] [--dry-run] [--log-to-file] [-h]",
+        "[-p params_repo] [--dry-run] [--log-to-file] [-h]",
         epilog="""
 Options:
    -f foundation    the foundation name for ops manager (e.g. cml-k8s-n-01)

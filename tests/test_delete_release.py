@@ -128,9 +128,7 @@ def test_repo_name_construction(input_args, expected_repo):
             main()
 
             mock_git_helper.assert_called_once_with(
-                git_dir=git_dir,
-                repo="ns-mgmt",
-                repo_dir=os.path.join(git_dir, expected_repo)
+                git_dir=git_dir, repo="ns-mgmt", repo_dir=os.path.join(git_dir, expected_repo)
             )
 
 
@@ -240,9 +238,7 @@ def test_deletion_cancelled():
     ):
 
         mock_git_helper.return_value.check_git_repo.return_value = True
-        mock_release_helper.return_value.get_github_release_by_tag.return_value = {
-            "tag_name": tag
-        }
+        mock_release_helper.return_value.get_github_release_by_tag.return_value = {"tag_name": tag}
         mock_git_helper.return_value.tag_exists.return_value = True
 
         with patch("sys.argv", ["delete_release.py", "-r", repo, "-t", tag]), patch(
