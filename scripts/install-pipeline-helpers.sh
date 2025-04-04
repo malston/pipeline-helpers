@@ -11,7 +11,7 @@ echo "This script will install the pipeline-helpers package."
 echo
 
 # Check if Python is installed
-if ! command -v python3 &> /dev/null; then
+if ! command -v python3 &>/dev/null; then
     echo -e "${RED}Error: Python 3 is required but not found.${NC}"
     echo "Please install Python 3 and try again."
     exit 1
@@ -69,14 +69,17 @@ mkdir -p "$BIN_DIR"
 
 echo "Creating command wrappers..."
 
-mapfile -t COMMANDS < <(find src/ -maxdepth 1 -type f -name "*.py" ! -name "__init__.py" ! -name "helpers.py" -exec basename {} .py \; | sed 's/-/_/g')
+COMMANDS=()
+while read -r cmd; do
+    COMMANDS+=("$cmd")
+done < <(find src/ -maxdepth 1 -type f -name "*.py" ! -name "__init__.py" ! -name "helpers.py" -exec basename {} .py \; | sed 's/_/-/g')
 
 for CMD in "${COMMANDS[@]}"; do
-    cat > "$BIN_DIR/$CMD" << 'WRAPPER'
+    cat >"$BIN_DIR/$CMD" <<'WRAPPER'
 #!/bin/bash
 source "$HOME/.pipeline-helpers/venv/bin/activate"
 WRAPPER
-    cat >> "$BIN_DIR/$CMD" <<WRAPPER
+    cat >>"$BIN_DIR/$CMD" <<WRAPPER
 $CMD "\$@"
 deactivate
 WRAPPER
@@ -105,7 +108,7 @@ if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
         if grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$PROFILE_FILE"; then
             echo "PATH already configured in $PROFILE_FILE"
         else
-            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$PROFILE_FILE"
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >>"$PROFILE_FILE"
             echo "PATH updated in $PROFILE_FILE"
             echo "Please restart your terminal or run: source $PROFILE_FILE"
         fi
