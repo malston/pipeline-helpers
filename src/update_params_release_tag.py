@@ -4,7 +4,7 @@ import argparse
 import os
 from pathlib import Path
 
-from src.helpers.command_helper import CommandHelper
+from src.helpers.path_helper import RepositoryPathHelper
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.error_handler import wrap_main
 from src.helpers.git_helper import GitHelper
@@ -86,8 +86,8 @@ def main() -> None:
 
     repo_dir = os.path.join(git_dir, repo)
     params_dir = os.path.join(git_dir, params_repo)
-    command_helper = CommandHelper(git_dir=git_dir, owner=owner)
-    repo, repo_dir, params_repo, params_dir = command_helper.adjust_repo_and_params_paths(
+    path_helper = RepositoryPathHelper(git_dir=git_dir, owner=owner)
+    repo, repo_dir, params_repo, params_dir = path_helper.adjust_repo_and_params_paths(
         repo, params_repo
     )
 

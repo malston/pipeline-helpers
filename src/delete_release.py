@@ -4,6 +4,7 @@ import argparse
 import os
 from pathlib import Path
 
+from src.helpers.path_helper import RepositoryPathHelper
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
@@ -29,7 +30,12 @@ Options:
   -h               display usage
 """,
     )
-    parser.add_argument("-r", "--repo", required=True, help=argparse.SUPPRESS)
+    parser.add_argument(
+        "-r",
+        "--repo",
+        required=True,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument(
         "-t",
         "--tag",
@@ -100,15 +106,16 @@ def main() -> None:
     repo = args.repo
     owner = args.owner
     release_tag = args.tag
-
     git_dir = args.git_dir
-    repo_dir = os.path.join(git_dir, args.repo)
+
+    path_helper = RepositoryPathHelper(git_dir=git_dir, owner=owner)
+    repo, repo_dir = path_helper.adjust_path(repo)
 
     # Check if repo ends with the owner
-    if args.owner != "Utilities-tkgieng":
-        repo_dir = os.path.join(git_dir, f"{repo}-{args.owner}")
-    if not os.path.isdir(repo_dir):
-        raise ValueError(f"Could not find repo directory: {repo_dir}")
+    # if args.owner != "Utilities-tkgieng":
+    #     repo_dir = os.path.join(git_dir, f"{repo}-{args.owner}")
+    # if not os.path.isdir(repo_dir):
+    #     raise ValueError(f"Could not find repo directory: {repo_dir}")
 
     # Initialize helpers
     release_helper = ReleaseHelper(
@@ -118,8 +125,6 @@ def main() -> None:
         owner=owner,
     )
     git_helper = GitHelper(git_dir=git_dir, repo=repo, repo_dir=repo_dir)
-    # release_helper = ReleaseHelper(repo=repo, repo_dir=repo_dir, owner=args.owner)
-    # git_helper = GitHelper(repo=repo, repo_dir=repo_dir)
     if not git_helper.check_git_repo():
         logger.error(f"{repo} is not a git repository")
         return

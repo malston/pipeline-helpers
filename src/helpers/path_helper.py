@@ -1,7 +1,7 @@
 import os
 
 
-class CommandHelper:
+class RepositoryPathHelper:
     """
     A helper class to adjust repository and params repository paths based on the owner.
     """
@@ -65,6 +65,22 @@ class CommandHelper:
             raise ValueError(f"Could not find params directory: {params_dir}")
 
         return repo, repo_dir, params_repo, params_dir
+
+    def adjust_path(self, repo):
+        """
+        Adjusts the repository path.
+
+        Args:
+          repo (str): The repository name.
+
+        Returns:
+          tuple: Adjusted name and directory path.
+        """
+        repo, repo_dir = self._adjust_path(repo)
+
+        if not os.path.isdir(repo_dir):
+            raise ValueError(f"Could not find repo directory: {repo_dir}")
+        return repo, repo_dir
 
     def adjust_paths(self, repo, params_repo):
         """
