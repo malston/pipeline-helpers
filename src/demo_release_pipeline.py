@@ -171,9 +171,10 @@ class DemoReleasePipeline:
                 capture_output=True,
             )
             return result.stdout.strip()
-        except subprocess.CalledProcessError as err:
-            logger.error(f"No release tags found in {self.repo_dir}.")
-            raise ValueError(f"No release tags found in {self.repo_dir}") from err
+        except subprocess.CalledProcessError:
+            logger.info(f"No release tags found in {self.repo_dir}.")
+            return None
+            # raise ValueError(f"No release tags found in {self.repo_dir}") from err
 
     def delete_github_release(
         self, repo: str, owner: str, tag: str, non_interactive: bool = False
@@ -439,6 +440,14 @@ class DemoReleasePipeline:
         if self.owner != "Utilities-tkgieng":
             mgmt_pipeline = f"tkgi-{self.repo}-{self.owner}-{self.foundation}"
 
+        if self.dry_run:
+            logger.info("[DRY RUN] Would perform the following actions:")
+            logger.info(
+                f"1. Ask to refly the {mgmt_pipeline} pipeline "
+                f"back to latest code on branch: {self.branch}"
+            )
+            return
+
         response = input(
             f"Do you want to refly the {mgmt_pipeline} pipeline "
             f"back to latest code on branch: {self.branch}? [yN] "
@@ -555,12 +564,9 @@ class DemoReleasePipeline:
         if not self.release_tag:
             self.release_tag = self.get_latest_release_tag()
 
-        if self.release_tag is None:
-            logger.error("Failed to get latest release tag")
-            return
-
-        # Delete GitHub release if requested and a release is found
-        self.delete_github_release(self.repo, self.owner, self.release_tag)
+        if self.release_tag is not None:
+            # Delete GitHub release if requested and a release is found
+            self.delete_github_release(self.repo, self.owner, self.release_tag)
 
         # Handle version checking and potential reversion
         self.handle_version_reversion()
