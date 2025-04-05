@@ -31,7 +31,7 @@ class EndToEndTest(unittest.TestCase):
         cls.concourse_url = os.environ.get("CONCOURSE_URL", "http://concourse-web:8080")
         cls.git_workspace = os.environ.get("GIT_WORKSPACE", "/root/git")
         cls.repos_owner = os.environ.get("REPOS_OWNER", "malston")
-        cls.foundation = os.environ.get("FOUNDATION_NAME", "test-foundation")
+        cls.foundation = os.environ.get("FOUNDATION_NAME", "test")
 
         # Check required environment variables
         if not cls.github_token:
@@ -60,7 +60,7 @@ class EndToEndTest(unittest.TestCase):
             sys.exit(1)
 
         # Check if repos are git repositories
-        git_helper = GitHelper(git_dir=cls.git_workspace)
+        git_helper = GitHelper(git_dir=cls.git_workspace, repo_dir=cls.repo_path, repo=cls.repo_name)
         if not git_helper.check_git_repo(f"{cls.repos_owner}/{cls.repo_name}"):
             cls.logger.error(f"{cls.repo_path} is not a valid git repository")
             sys.exit(1)
@@ -122,7 +122,7 @@ class EndToEndTest(unittest.TestCase):
         """Test setting up a release pipeline."""
         # Change to CI directory
         os.chdir(os.path.join(self.repo_path, "ci"))
-        
+
         # Create a test pipeline name
         pipeline_name = f"test-pipeline-{int(time.time())}"
         
@@ -133,7 +133,7 @@ class EndToEndTest(unittest.TestCase):
                     "./fly.sh",
                     "-f", self.foundation,
                     "-p", pipeline_name,
-                    "-b", "master",
+                    "-b", "develop",
                 ],
                 check=True,
                 capture_output=True,
@@ -199,7 +199,7 @@ class EndToEndTest(unittest.TestCase):
                     "-f", self.foundation,
                     "-r", f"{self.repos_owner}/{self.repo_name}",
                     "-p", f"{self.repos_owner}/{self.params_repo_name}",
-                    "-b", "master",
+                    "-b", "develop",
                     "--dry-run",
                 ],
                 check=True,

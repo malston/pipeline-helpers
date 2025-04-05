@@ -47,7 +47,7 @@ def main_test_function():
     )
     os.chdir(repo_dir)
 
-    if not release_helper.update_params_git_release_tag("v"):
+    if not release_helper.update_params_git_release_tag("release-v"):
         raise ValueError("Failed to update git release tag")
 
 
@@ -189,7 +189,7 @@ def test_main_success(mock_path_helper, mock_release_helper, mock_chdir, mock_is
     )
 
     # Verify update_params_git_release_tag was called
-    mock_release_helper.return_value.update_params_git_release_tag.assert_called_once_with("v")
+    mock_release_helper.return_value.update_params_git_release_tag.assert_called_once_with("release-v")
 
 
 @patch("os.path.isdir")

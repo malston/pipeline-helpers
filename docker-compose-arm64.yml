@@ -57,6 +57,7 @@ services:
 
   # Test runner container - using ARM64 native image
   test-runner:
+    privileged: true
     build:
       context: .
       dockerfile: Dockerfile.arm64.test
@@ -74,7 +75,7 @@ services:
       - PIPELINE_HELPERS_LOG_TO_FILE=1
       - SSH_PRIVATE_KEY_PATH=/root/.ssh/id_rsa
       - REPOS_OWNER=malston
-      - FOUNDATION_NAME=test-foundation
+      - FOUNDATION_NAME=test
     command: /app/scripts/run-tests.sh
 
 volumes:

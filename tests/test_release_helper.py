@@ -27,7 +27,7 @@ class TestReleaseHelper(unittest.TestCase):
         self.mock_github = self.mock_github_client.return_value
 
         self.helper = ReleaseHelper(
-            foundation="test-foundation",
+            foundation="test",
             repo="test-repo",
             owner="test-owner",
             params_repo="test-params",

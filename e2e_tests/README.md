@@ -63,7 +63,7 @@ You can customize the test environment by setting these environment variables:
 
 - `GITHUB_TOKEN`: Your GitHub personal access token (required)
 - `REPOS_OWNER`: GitHub owner of the repositories (default: malston)
-- `FOUNDATION_NAME`: Name to use for the foundation (default: test-foundation)
+- `FOUNDATION_NAME`: Name to use for the foundation (default: test)
 
 Example:
 ```bash

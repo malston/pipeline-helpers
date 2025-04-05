@@ -24,6 +24,9 @@ class GitHelper:
         self.git_dir = (
             git_dir if git_dir else os.environ.get("GIT_WORKSPACE", str(Path.home() / "git"))
         )
+        # Either repo_dir or repo must be provided
+        if not repo_dir and not repo:
+            raise ValueError("Either 'repo_dir' or 'repo' must be provided.")
         self.repo = repo
         self.repo_dir = repo_dir if repo_dir else os.path.join(self.git_dir, self.repo)
         self.params = params

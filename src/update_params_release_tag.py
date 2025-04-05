@@ -106,7 +106,7 @@ def main() -> None:
     )
     os.chdir(repo_dir)
 
-    if not release_helper.update_params_git_release_tag("v"):
+    if not release_helper.update_params_git_release_tag("release-v"):
         raise ValueError("Failed to update git release tag")
 
 

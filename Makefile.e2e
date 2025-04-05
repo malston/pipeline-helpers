@@ -14,7 +14,7 @@ help:
 	@echo "Environment variables:"
 	@echo "  GITHUB_TOKEN - Your GitHub personal access token (required)"
 	@echo "  REPOS_OWNER  - GitHub owner of the repos (default: malston)"
-	@echo "  FOUNDATION_NAME - Name to use for foundation (default: test-foundation)"
+	@echo "  FOUNDATION_NAME - Name to use for foundation (default: test)"
 
 # Check that required environment variables are set
 check-env:
@@ -70,7 +70,7 @@ run-tests: check-env m2-check
 	fi
 	
 	@echo "Starting Concourse and running tests..."
-	docker-compose -f docker-compose.yml up -d
+	docker-compose -f docker-compose-arm64.yml up -d
 	
 	@echo "Tests are running in the container. Check logs with 'make -f Makefile.e2e logs'."
 	@echo "When finished, press Ctrl+C to stop the containers."
@@ -78,7 +78,7 @@ run-tests: check-env m2-check
 # Clean up test artifacts
 clean:
 	@echo "Cleaning up test environment..."
-	docker-compose -f docker-compose.yml down -v
+	docker-compose -f docker-compose-arm64.yml down -v
 	@echo "Do you want to remove test results and SSH keys? (y/N): "
 	@read CONFIRM && \
 	if [ "$${CONFIRM}" = "y" ] || [ "$${CONFIRM}" = "Y" ]; then \

@@ -45,7 +45,7 @@ git config --global user.email "test@example.com"
 
 # Set up Concourse target
 echo "Configuring Concourse target..."
-fly -t test login -c "$CONCOURSE_URL" -n main --team-name main
+fly -t test login -c "$CONCOURSE_URL" -n main --team-name main -u test -p test
 fly -t test sync
 
 # Clone required repositories
