@@ -1,0 +1,39 @@
+FROM python:3.11-slim
+
+# Install required packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git \
+    openssh-client \
+    curl \
+    gnupg2 \
+    ca-certificates \
+    lsb-release \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install fly CLI - need to download the Linux ARM64 version
+RUN mkdir -p /tmp/fly && \
+    curl -Lo /tmp/fly/fly.tgz https://github.com/concourse/concourse/releases/download/v7.9.1/fly-7.9.1-linux-amd64.tgz && \
+    tar -xzf /tmp/fly/fly.tgz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/fly && \
+    rm -rf /tmp/fly
+
+# Set up directories
+WORKDIR /app
+RUN mkdir -p /root/git /test-results
+
+# Install pipeline-helpers
+COPY . /app/
+RUN pip install -e .
+
+# Copy test scripts
+COPY scripts/run-tests.sh /app/scripts/run-tests.sh
+COPY e2e_tests/ /app/e2e_tests/
+RUN chmod +x /app/scripts/run-tests.sh
+
+# Create SSH directory for git cloning
+RUN mkdir -p /root/.ssh && \
+    chmod 700 /root/.ssh
+
+CMD ["/app/scripts/run-tests.sh"]

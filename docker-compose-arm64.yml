@@ -1,0 +1,82 @@
+services:
+  # Concourse services - using ARM64 images where available
+  concourse-db:
+    image: postgres:14
+    platform: linux/arm64
+    environment:
+      POSTGRES_DB: concourse
+      POSTGRES_USER: concourse_user
+      POSTGRES_PASSWORD: concourse_pass
+    volumes:
+      - concourse-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U concourse_user -d concourse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  concourse:
+    image: rdclda/concourse:7.9.1
+    platform: linux/arm64
+    command: quickstart
+    privileged: true
+    depends_on:
+      concourse-db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      CONCOURSE_POSTGRES_HOST: concourse-db
+      CONCOURSE_POSTGRES_USER: concourse_user
+      CONCOURSE_POSTGRES_PASSWORD: concourse_pass
+      CONCOURSE_POSTGRES_DATABASE: concourse
+      CONCOURSE_EXTERNAL_URL: http://localhost:8080
+      CONCOURSE_ADD_LOCAL_USER: test:test
+      CONCOURSE_MAIN_TEAM_LOCAL_USER: test
+      # For simplicity, disable auth for local development
+      CONCOURSE_NO_REALLY_I_DONT_WANT_ANY_AUTH: "true"
+      CONCOURSE_WORKER_SWEEP_INTERVAL: 24h
+      # If running on a non M1/M2 MacOS, optionally change this to overlay
+      # CONCOURSE_WORKER_BAGGAGECLAIM_DRIVER: naive
+      CONCOURSE_WORKER_BAGGAGECLAIM_DISABLE_USER_NAMESPACES: true
+      CONCOURSE_TSA_CLIENT_SECRET: Y29uY291cnNlLXdvcmtlcgo=
+      CONCOURSE_CLIENT_SECRET: Y29uY291cnNlLXdlYgo=
+      CONCOURSE_X_FRAME_OPTIONS: allow
+      CONCOURSE_CONTENT_SECURITY_POLICY: "*"
+      CONCOURSE_CLUSTER_NAME: tutorial
+      CONCOURSE_WORKER_WORK_DIR: /worker-state
+      CONCOURSE_WORKER_RUNTIME: "houdini"
+      CONCOURSE_WORKER_BAGGAGECLAIM_DRIVER: overlay
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - concourse-worker-data:/worker-state
+
+  # Test runner container - using ARM64 native image
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.arm64.test
+    depends_on:
+      concourse:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./test-results:/test-results
+      - ./test-ssh:/root/.ssh
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - CONCOURSE_URL=http://concourse:8080
+      - GIT_WORKSPACE=/root/git
+      - PIPELINE_HELPERS_LOG_TO_FILE=1
+      - SSH_PRIVATE_KEY_PATH=/root/.ssh/id_rsa
+      - REPOS_OWNER=malston
+      - FOUNDATION_NAME=test-foundation
+    command: /app/scripts/run-tests.sh
+
+volumes:
+  concourse-db-data:
+  concourse-worker-data:

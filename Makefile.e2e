@@ -1,0 +1,109 @@
+# Makefile for running end-to-end tests
+
+.PHONY: setup run-tests clean logs help m2-check
+
+# Default target
+help:
+	@echo "Available commands:"
+	@echo "  make -f Makefile.e2e m2-check     - Check M2 compatibility and setup"
+	@echo "  make -f Makefile.e2e setup        - Prepare test environment (generate SSH keys, etc.)"
+	@echo "  make -f Makefile.e2e run-tests    - Run all end-to-end tests"
+	@echo "  make -f Makefile.e2e clean        - Remove test artifacts"
+	@echo "  make -f Makefile.e2e logs         - View test logs"
+	@echo ""
+	@echo "Environment variables:"
+	@echo "  GITHUB_TOKEN - Your GitHub personal access token (required)"
+	@echo "  REPOS_OWNER  - GitHub owner of the repos (default: malston)"
+	@echo "  FOUNDATION_NAME - Name to use for foundation (default: test-foundation)"
+
+# Check that required environment variables are set
+check-env:
+	@if [ -z "$(GITHUB_TOKEN)" ]; then \
+		echo "Error: GITHUB_TOKEN environment variable is required"; \
+		exit 1; \
+	fi
+
+# Set up the test environment
+setup: check-env
+	@echo "Setting up test environment..."
+	@mkdir -p test-ssh test-results
+	
+	@# Generate SSH key if it doesn't exist
+	@if [ ! -f "test-ssh/id_rsa" ]; then \
+		echo "Generating SSH key..."; \
+		ssh-keygen -t rsa -b 4096 -f test-ssh/id_rsa -N "" -C "pipeline-helpers-e2e-tests"; \
+		echo ""; \
+		echo "Add this public key to your GitHub account:"; \
+		cat test-ssh/id_rsa.pub; \
+		echo ""; \
+		echo "After adding the key to GitHub, run 'make -f Makefile.e2e run-tests'"; \
+	else \
+		echo "SSH key already exists"; \
+	fi
+
+# Check for M2 compatibility
+m2-check:
+	@echo "Checking for Apple Silicon (M1/M2) processor..."
+	@if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then \
+		echo "Apple Silicon (M1/M2) detected."; \
+		if [ ! -d "/Library/Apple/usr/share/rosetta" ]; then \
+			echo "Warning: Rosetta 2 doesn't appear to be installed."; \
+			echo "Run 'softwareupdate --install-rosetta' to install it."; \
+		else \
+			echo "Rosetta 2 appears to be installed."; \
+		fi; \
+		echo ""; \
+		echo "Please ensure Docker Desktop has Rosetta 2 emulation enabled:"; \
+		echo "Docker Desktop > Settings > Features in development > Use Rosetta for x86/amd64 emulation"; \
+		echo ""; \
+		echo "For more details, see M2_MAC_INSTRUCTIONS.md"; \
+	else \
+		echo "Not running on Apple Silicon - no special configuration needed."; \
+	fi
+
+# Run the end-to-end tests
+run-tests: check-env m2-check
+	@echo "Running end-to-end tests..."
+	@if [ ! -f "test-ssh/id_rsa" ]; then \
+		echo "Error: SSH key not found. Run 'make -f Makefile.e2e setup' first"; \
+		exit 1; \
+	fi
+	
+	@echo "Starting Concourse and running tests..."
+	docker-compose -f docker-compose.yml up -d
+	
+	@echo "Tests are running in the container. Check logs with 'make -f Makefile.e2e logs'."
+	@echo "When finished, press Ctrl+C to stop the containers."
+
+# Clean up test artifacts
+clean:
+	@echo "Cleaning up test environment..."
+	docker-compose -f docker-compose.yml down -v
+	@echo "Do you want to remove test results and SSH keys? (y/N): "
+	@read CONFIRM && \
+	if [ "$${CONFIRM}" = "y" ] || [ "$${CONFIRM}" = "Y" ]; then \
+		rm -rf test-results/* test-ssh/*; \
+		echo "Test results and SSH keys removed"; \
+	else \
+		echo "Test results and SSH keys preserved"; \
+	fi
+
+# View test logs
+logs:
+	@if [ ! -d "test-results" ] || [ -z "$(ls -A test-results)" ]; then \
+		echo "No test logs found. Run 'make -f Makefile.e2e run-tests' first"; \
+		exit 1; \
+	fi
+	
+	@echo "Available logs:"
+	@ls -1 test-results/*.log | cat -n
+	@echo "Enter the number of the log file to view (q to quit): "
+	@read SELECTION && \
+	if [ "$$SELECTION" != "q" ]; then \
+		LOG_FILE=$$(ls -1 test-results/*.log | sed -n "$$SELECTION p"); \
+		if [ -f "$$LOG_FILE" ]; then \
+			less "$$LOG_FILE"; \
+		else \
+			echo "Invalid selection"; \
+		fi; \
+	fi
