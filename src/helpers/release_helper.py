@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import argparse
 import os
 import subprocess
 import sys
@@ -55,16 +54,21 @@ class ReleaseHelper:
         self,
         repo: str,
         git_dir: str,
+        foundation: str = None,
         owner: str = "Utilities-tkgieng",
         params_repo: str = "params",
         repo_dir: str = None,
         params_dir: str = None,
+        release_pipeline: str = None,
+        set_pipeline: str = None,
+        mgmt_pipeline: str = None,
         token: str = None,
     ) -> None:
         self.repo = repo
         self.git_dir = (
             git_dir if git_dir else os.environ.get("GIT_WORKSPACE", str(Path.home() / "git"))
         )
+        self.foundation = foundation
         self.owner = owner
         self.params_repo = params_repo
         self.home = str(Path.home())
@@ -79,6 +83,9 @@ class ReleaseHelper:
             params_dir=self.params_dir,
         )
         self.github_client = GitHubClient(token=token)
+        self.release_pipeline = release_pipeline or f"tkgi-{self.repo}-release"
+        set_pipeline = set_pipeline or f"tkgi-{self.repo}-{self.foundation}-set-release-pipeline"
+        mgmt_pipeline = mgmt_pipeline or f"tkgi-{self.repo}-{self.foundation}"
 
         if not self.git_helper.check_git_repo():
             raise ValueError("Repository is not a git repository")
@@ -319,9 +326,9 @@ class ReleaseHelper:
             logger.error(f"Failed to update git release tag: {e}")
             raise
 
-    def run_release_pipeline(self, foundation: str, pipeline: str, message_body: str = "") -> bool:
+    def run_release_pipeline(self, foundation: str, message_body: str = "") -> bool:
         """Run the release pipeline."""
-        logger.info(f"Running {pipeline} pipeline...")
+        logger.info(f"Running {self.release_pipeline} pipeline...")
 
         if not self.git_helper.confirm("Do you want to continue?"):
             return False
@@ -329,16 +336,25 @@ class ReleaseHelper:
         try:
             # Run fly.sh script
             self.run_fly_script(
-                ["-f", foundation, "-r", message_body, "-o", self.owner, "-p", pipeline]
+                [
+                    "-f",
+                    foundation,
+                    "-r",
+                    message_body,
+                    "-o",
+                    self.owner,
+                    "-p",
+                    self.release_pipeline,
+                ]
             )
 
             # Unpause and trigger pipeline using the concourse client
-            self.concourse_client.unpause_pipeline("tkgi-pipeline-upgrade", pipeline)
+            self.concourse_client.unpause_pipeline("tkgi-pipeline-upgrade", self.release_pipeline)
             self.concourse_client.trigger_job(
-                "tkgi-pipeline-upgrade", f"{pipeline}/create-final-release"
+                "tkgi-pipeline-upgrade", f"{self.release_pipeline}/create-final-release"
             )
             self.concourse_client.watch_job(
-                "tkgi-pipeline-upgrade", f"{pipeline}/create-final-release"
+                "tkgi-pipeline-upgrade", f"{self.release_pipeline}/create-final-release"
             )
 
             input("Press enter to continue")
@@ -350,10 +366,7 @@ class ReleaseHelper:
 
     def run_set_pipeline(self, foundation: str) -> bool:
         """Run the set release pipeline."""
-        pipeline = f"tkgi-{self.repo}-{foundation}-set-release-pipeline"
-        if self.owner != "Utilities-tkgieng":
-            pipeline = f"tkgi-{self.repo}-{self.owner}-{foundation}-set-release-pipeline"
-        logger.info(f"Running {pipeline} pipeline...")
+        logger.info(f"Running {self.set_pipeline} pipeline...")
 
         if not self.git_helper.confirm("Do you want to continue?"):
             return False
@@ -365,7 +378,7 @@ class ReleaseHelper:
                     "-f",
                     foundation,
                     "-s",
-                    pipeline,
+                    self.set_pipeline,
                     "-b",
                     self.git_helper.get_current_branch(),
                     "-d",
@@ -378,9 +391,9 @@ class ReleaseHelper:
             )
 
             # Unpause and trigger pipeline using the concourse client
-            self.concourse_client.unpause_pipeline(foundation, pipeline)
+            self.concourse_client.unpause_pipeline(foundation, self.set_pipeline)
             self.concourse_client.trigger_job(
-                foundation, f"{pipeline}/set-release-pipeline", watch=True
+                foundation, f"{self.set_pipeline}/set-release-pipeline", watch=True
             )
 
             input("Press enter to continue")

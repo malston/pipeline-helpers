@@ -49,9 +49,18 @@ def main_test_function():
     if not git_helper.check_git_repo():
         raise ValueError("Git is not installed or not in PATH")
 
+    release_pipeline = f"tkgi-{repo}-release"
+    if args.owner != "Utilities-tkgieng":
+        release_pipeline = f"tkgi-{repo}-{args.owner}-release"
+
     git_dir = os.path.expanduser("~/git")
     release_helper = ReleaseHelper(
-        repo=repo, owner=args.owner, params_repo=params_repo, git_dir=git_dir
+        foundation=args.foundation,
+        repo=repo,
+        owner=args.owner,
+        params_repo=params_repo,
+        git_dir=git_dir,
+        release_pipeline=release_pipeline,
     )
     concourse_client = ConcourseClient()
 
@@ -70,12 +79,8 @@ def main_test_function():
         os.chdir(ci_dir)
         logger.info(f"Changed to directory: {ci_dir}")
 
-    release_pipeline = f"tkgi-{repo}-release"
-    if args.owner != "Utilities-tkgieng":
-        release_pipeline = f"tkgi-{repo}-{args.owner}-release"
-
     # Run release pipeline
-    if not release_helper.run_release_pipeline(args.foundation, release_pipeline, args.message):
+    if not release_helper.run_release_pipeline(args.foundation, args.message):
         raise ValueError("Failed to run release pipeline")
 
     # Update git release tag
@@ -240,7 +245,7 @@ def test_main_success_flow(
             # Verify the workflow
             mock_chdir.assert_called_once()
             mock_release_helper.return_value.run_release_pipeline.assert_called_once_with(
-                "foundation", "tkgi-repo-release", "Test release"
+                "foundation", "Test release"
             )
             mock_release_helper.return_value.update_params_git_release_tag.assert_called_once()
             mock_release_helper.return_value.run_set_pipeline.assert_called_once_with("foundation")
@@ -448,10 +453,12 @@ def test_main_with_custom_owner(
 
             # Verify ReleaseHelper was called with the correct parameters
             mock_release_helper.assert_called_with(
+                foundation="foundation",
                 repo="repo-custom-owner",
                 owner="custom-owner",
                 params_repo="params-custom-owner",
                 git_dir=os.path.expanduser("~/git"),
+                release_pipeline="tkgi-repo-custom-owner-custom-owner-release",
             )
 
 

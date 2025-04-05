@@ -6,7 +6,6 @@ from pathlib import Path
 
 from src.helpers.argparse_helper import CustomHelpFormatter, HelpfulArgumentParser
 from src.helpers.error_handler import wrap_main
-from src.helpers.git_helper import GitHelper
 from src.helpers.logger import default_logger as logger
 from src.helpers.path_helper import RepositoryPathHelper
 from src.helpers.release_helper import ReleaseHelper
@@ -105,12 +104,6 @@ def main() -> None:
         params_dir=params_dir,
         params_repo=params_repo,
     )
-    git_helper = GitHelper(
-        git_dir=git_dir, repo=repo, repo_dir=repo_dir, params=params_repo, params_dir=params_dir
-    )
-
-    if not git_helper.check_git_repo():
-        raise ValueError(f"{repo} is not a git repository")
     os.chdir(repo_dir)
 
     if not release_helper.update_params_git_release_tag("v"):

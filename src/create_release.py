@@ -113,9 +113,15 @@ def main() -> None:
     repo, repo_dir, params_repo, params_dir = path_helper.adjust_paths(repo, params_repo)
 
     release_pipeline = f"tkgi-{repo}-release"
+    set_pipeline = f"tkgi-{repo}-{foundation}-set-release-pipeline"
+    mgmt_pipeline = f"tkgi-{repo}-{foundation}"
     if owner != "Utilities-tkgieng":
         release_pipeline = f"tkgi-{repo}-{owner}-release"
+        set_pipeline = f"tkgi-{repo}-{owner}-{foundation}-set-release-pipeline"
+        mgmt_pipeline = f"tkgi-{repo}-{owner}-{foundation}"
     logger.info(f"Using release pipeline: {release_pipeline}")
+    logger.info(f"Using set pipeline: {set_pipeline}")
+    logger.info(f"Using mgmt pipeline: {mgmt_pipeline}")
     logger.info(f"Using git directory: {git_dir}")
     logger.info(f"Using repo directory: {repo_dir}")
     logger.info(f"Using params directory: {params_dir}")
@@ -124,21 +130,24 @@ def main() -> None:
     logger.info(f"Using owner: {owner}")
 
     # Initialize helpers
+    concourse_client = ConcourseClient()
     release_helper = ReleaseHelper(
+        foundation=foundation,
         repo=repo,
         git_dir=git_dir,
         repo_dir=repo_dir,
         owner=owner,
         params_dir=params_dir,
         params_repo=params_repo,
+        release_pipeline=release_pipeline,
+        set_pipeline=set_pipeline,
+        mgmt_pipeline=mgmt_pipeline,
     )
     git_helper = GitHelper(
         git_dir=git_dir, repo=repo, repo_dir=repo_dir, params=params_repo, params_dir=params_dir
     )
     if not git_helper.check_git_repo():
         raise ValueError(f"{repo} is not a git repository")
-
-    concourse_client = ConcourseClient()
 
     # Change to the repo's ci directory
     ci_dir = os.path.join(git_dir, repo, "ci")
@@ -156,7 +165,7 @@ def main() -> None:
         logger.info(f"Changed to directory: {ci_dir}")
 
     # Run release pipeline
-    if not release_helper.run_release_pipeline(foundation, release_pipeline, message):
+    if not release_helper.run_release_pipeline(foundation, message):
         raise ValueError("Failed to run release pipeline")
 
     # Update git release tag

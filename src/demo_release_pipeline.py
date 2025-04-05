@@ -35,6 +35,9 @@ class DemoReleasePipeline:
         params_branch: str,
         release_tag: str,
         release_body: str,
+        release_pipeline: str,
+        set_pipeline: str,
+        mgmt_pipeline: str,
         dry_run: bool = False,
     ):
         self.git_helper = git_helper
@@ -51,6 +54,9 @@ class DemoReleasePipeline:
         self.repo_dir = repo_dir
         self.params_repo = params_repo
         self.params_dir = params_dir
+        self.release_pipeline = (release_pipeline,)
+        self.set_pipeline = (set_pipeline,)
+        self.mgmt_pipeline = (mgmt_pipeline,)
 
         self.github_token = os.getenv("GITHUB_TOKEN")
         if not self.github_token:
@@ -330,19 +336,16 @@ class DemoReleasePipeline:
 
     def run_release_pipeline(self) -> None:
         """Run the release pipeline."""
-        release_pipeline = f"tkgi-{self.repo}-release"
-        if self.owner != "Utilities-tkgieng":
-            release_pipeline = f"tkgi-{self.repo}-{self.owner}-release"
 
         if self.dry_run:
             logger.info("[DRY RUN] Would perform the following actions:")
-            logger.info(f"1. Ask to recreate release pipeline: {release_pipeline}")
+            logger.info(f"1. Ask to recreate release pipeline: {self.release_pipeline}")
             logger.info("2. Run fly.sh with parameters:")
             logger.info(f"   - foundation: {self.foundation}")
             logger.info(f"   - release body: {self.release_body}")
             logger.info(f"   - owner: {self.owner}")
-            logger.info(f"   - pipeline: {release_pipeline}")
-            logger.info(f"3. Ask to run pipeline: {release_pipeline}")
+            logger.info(f"   - pipeline: {self.release_pipeline}")
+            logger.info(f"3. Ask to run pipeline: {self.release_pipeline}")
             logger.info("4. Update git release tag")
             return
 
@@ -350,7 +353,7 @@ class DemoReleasePipeline:
         response = input("Do you want to recreate the release pipeline? [yN] ")
         if response.lower().startswith("y"):
             # Using our ConcourseClient to destroy pipeline
-            cmd = ["-t", "tkgi-pipeline-upgrade", "dp", "-p", release_pipeline, "-n"]
+            cmd = ["-t", "tkgi-pipeline-upgrade", "dp", "-p", self.release_pipeline, "-n"]
             self.concourse_client._run_fly_command(cmd)
 
         # Run fly.sh script
@@ -363,52 +366,48 @@ class DemoReleasePipeline:
                 "-o",
                 self.owner,
                 "-p",
-                release_pipeline,
+                self.release_pipeline,
             ]
         )
 
         # Run pipeline if requested
-        response = input(f"Do you want to run the {release_pipeline} pipeline? [yN] ")
+        response = input(f"Do you want to run the {self.release_pipeline} pipeline? [yN] ")
         if response.lower().startswith("y"):
             # Using our ConcourseClient to unpause, trigger and watch the pipeline
-            self.concourse_client.unpause_pipeline("tkgi-pipeline-upgrade", release_pipeline)
+            self.concourse_client.unpause_pipeline("tkgi-pipeline-upgrade", self.release_pipeline)
             self.concourse_client.trigger_job(
-                "tkgi-pipeline-upgrade", f"{release_pipeline}/create-final-release"
+                "tkgi-pipeline-upgrade", f"{self.release_pipeline}/create-final-release"
             )
             self.concourse_client.watch_job(
-                "tkgi-pipeline-upgrade", f"{release_pipeline}/create-final-release"
+                "tkgi-pipeline-upgrade", f"{self.release_pipeline}/create-final-release"
             )
 
-    def run_set_release_pipeline(self) -> None:
+    def run_set_pipeline(self) -> None:
         """Run the set release pipeline."""
-        mgmt_pipeline = f"tkgi-{self.repo}-{self.foundation}"
-        if self.owner != "Utilities-tkgieng":
-            mgmt_pipeline = f"tkgi-{self.repo}-{self.owner}-{self.foundation}"
-        set_release_pipeline = f"{mgmt_pipeline}-set-release-pipeline"
 
         if self.dry_run:
             logger.info("[DRY RUN] Would perform the following actions:")
-            logger.info(f"1. Ask to run pipeline: {set_release_pipeline}")
+            logger.info(f"1. Ask to run pipeline: {self.set_release_pipeline}")
             logger.info("2. Run fly.sh with parameters:")
             logger.info(f"   - foundation: {self.foundation}")
-            logger.info(f"   - set pipeline: {set_release_pipeline}")
+            logger.info(f"   - set pipeline: {self.set_release_pipeline}")
             logger.info(f"   - branch: {self.branch}")
             logger.info(f"   - params branch: {self.params_branch}")
             logger.info(f"   - owner: {self.owner}")
-            logger.info(f"   - pipeline: {mgmt_pipeline}")
+            logger.info(f"   - pipeline: {self.mgmt_pipeline}")
             logger.info("3. Unpause and trigger set-release-pipeline job")
-            logger.info(f"4. Ask to run pipeline: {mgmt_pipeline}")
+            logger.info(f"4. Ask to run pipeline: {self.mgmt_pipeline}")
             logger.info("5. Unpause and trigger prepare-kustomizations job")
             return
 
-        response = input(f"Do you want to run the {set_release_pipeline} pipeline? [yN] ")
+        response = input(f"Do you want to run the {self.set_release_pipeline} pipeline? [yN] ")
         if response.lower().startswith("y"):
             self.run_fly_script(
                 [
                     "-f",
                     self.foundation,
                     "-s",
-                    set_release_pipeline,
+                    self.set_release_pipeline,
                     "-b",
                     self.branch,
                     "-d",
@@ -416,51 +415,50 @@ class DemoReleasePipeline:
                     "-o",
                     self.owner,
                     "-p",
-                    mgmt_pipeline,
+                    self.mgmt_pipeline,
                 ]
             )
 
             # Using our ConcourseClient to unpause pipeline and trigger job
-            self.concourse_client.unpause_pipeline(self.foundation, set_release_pipeline)
+            self.concourse_client.unpause_pipeline(self.foundation, self.set_release_pipeline)
             self.concourse_client.trigger_job(
-                self.foundation, f"{set_release_pipeline}/set-release-pipeline", watch=True
+                self.foundation, f"{self.set_release_pipeline}/set-release-pipeline", watch=True
             )
 
-            response = input(f"Do you want to run the {mgmt_pipeline} pipeline? [yN] ")
+            response = input(f"Do you want to run the {self.mgmt_pipeline} pipeline? [yN] ")
             if response.lower().startswith("y"):
                 # Using our ConcourseClient to unpause pipeline and trigger job
-                self.concourse_client.unpause_pipeline(self.foundation, mgmt_pipeline)
+                self.concourse_client.unpause_pipeline(self.foundation, self.mgmt_pipeline)
                 self.concourse_client.trigger_job(
-                    self.foundation, f"{mgmt_pipeline}/prepare-kustomizations", watch=True
+                    self.foundation, f"{self.mgmt_pipeline}/prepare-kustomizations", watch=True
                 )
 
     def refly_pipeline(self) -> None:
         """Refly the pipeline back to latest code."""
-        mgmt_pipeline = f"tkgi-{self.repo}-{self.foundation}"
-        if self.owner != "Utilities-tkgieng":
-            mgmt_pipeline = f"tkgi-{self.repo}-{self.owner}-{self.foundation}"
 
         if self.dry_run:
             logger.info("[DRY RUN] Would perform the following actions:")
             logger.info(
-                f"1. Ask to refly the {mgmt_pipeline} pipeline "
+                f"1. Ask to refly the {self.mgmt_pipeline} pipeline "
                 f"back to latest code on branch: {self.branch}"
             )
             return
 
         response = input(
-            f"Do you want to refly the {mgmt_pipeline} pipeline "
+            f"Do you want to refly the {self.mgmt_pipeline} pipeline "
             f"back to latest code on branch: {self.branch}? [yN] "
         )
         if response.lower().startswith("y"):
-            self.run_fly_script(["-f", self.foundation, "-b", self.branch, "-p", mgmt_pipeline])
+            self.run_fly_script(
+                ["-f", self.foundation, "-b", self.branch, "-p", self.mgmt_pipeline]
+            )
 
-            response = input(f"Do you want to rerun the {mgmt_pipeline} pipeline? [yN] ")
+            response = input(f"Do you want to rerun the {self.mgmt_pipeline} pipeline? [yN] ")
             if response.lower().startswith("y"):
                 # Using our ConcourseClient to unpause pipeline and trigger job
-                self.concourse_client.unpause_pipeline(self.foundation, mgmt_pipeline)
+                self.concourse_client.unpause_pipeline(self.foundation, self.mgmt_pipeline)
                 self.concourse_client.trigger_job(
-                    self.foundation, f"{mgmt_pipeline}/prepare-kustomizations", watch=True
+                    self.foundation, f"{self.mgmt_pipeline}/prepare-kustomizations", watch=True
                 )
 
     def handle_version_reversion(self) -> None:
@@ -585,7 +583,7 @@ class DemoReleasePipeline:
                 logger.info("Exiting the pipeline process.")
                 sys.exit(1)
 
-        self.run_set_release_pipeline()
+        self.run_set_pipeline()
         self.refly_pipeline()
 
 
@@ -708,7 +706,16 @@ Options:
     repo, repo_dir, params_repo, params_dir = path_helper.adjust_paths(repo, params_repo)
 
     release_pipeline = f"tkgi-{repo}-release"
+    set_pipeline = f"tkgi-{repo}-{foundation}-set-release-pipeline"
+    mgmt_pipeline = f"tkgi-{repo}-{foundation}"
+    if owner != "Utilities-tkgieng":
+        release_pipeline = f"tkgi-{repo}-{owner}-release"
+        set_pipeline = f"tkgi-{repo}-{owner}-{foundation}-set-release-pipeline"
+        mgmt_pipeline = f"tkgi-{repo}-{owner}-{foundation}"
+    release_pipeline = f"tkgi-{repo}-release"
     logger.info(f"Using release pipeline: {release_pipeline}")
+    logger.info(f"Using set pipeline: {set_pipeline}")
+    logger.info(f"Using mgmt pipeline: {mgmt_pipeline}")
     logger.info(f"Using git directory: {git_dir}")
     logger.info(f"Using repo directory: {repo_dir}")
     logger.info(f"Using params directory: {params_dir}")
@@ -718,12 +725,16 @@ Options:
 
     # Initialize helpers
     release_helper = ReleaseHelper(
+        foundation=foundation,
         repo=repo,
         git_dir=git_dir,
         repo_dir=repo_dir,
         owner=owner,
         params_dir=params_dir,
         params_repo=params_repo,
+        release_pipeline=release_pipeline,
+        set_pipeline=set_pipeline,
+        mgmt_pipeline=mgmt_pipeline,
     )
     git_helper = GitHelper(
         git_dir=git_dir, repo=repo, repo_dir=repo_dir, params=params_repo, params_dir=params_dir
@@ -734,6 +745,9 @@ Options:
     pipeline = DemoReleasePipeline(
         git_helper=git_helper,
         release_helper=release_helper,
+        release_pipeline=release_pipeline,
+        set_pipeline=set_pipeline,
+        mgmt_pipeline=mgmt_pipeline,
         concourse_client=ConcourseClient(),
         foundation=foundation,
         repo=repo,
