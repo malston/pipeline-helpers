@@ -50,7 +50,7 @@ For the best performance:
 
 If you encounter "exec format error" messages:
 
-```
+```sh
 standard_init_linux.go:228: exec user process caused: exec format error
 ```
 

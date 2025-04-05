@@ -25,12 +25,15 @@ RUN mkdir -p /root/git /test-results
 
 # Install pipeline-helpers
 COPY . /app/
-RUN pip install -e .
 
-# Copy test scripts
-COPY scripts/run-tests.sh /app/scripts/run-tests.sh
+# Copy test scripts and set permissions
+COPY scripts/run-tests.sh /app/scripts/
 COPY e2e_tests/ /app/e2e_tests/
-RUN chmod +x /app/scripts/run-tests.sh
+
+# Make sure script is executable - using explicit chmod with full path
+RUN chmod +x /app/scripts/run-tests.sh && \
+    ls -la /app/scripts/run-tests.sh && \
+    pip install -e .
 
 # Create SSH directory for git cloning
 RUN mkdir -p /root/.ssh && \

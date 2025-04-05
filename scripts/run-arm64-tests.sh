@@ -52,3 +52,10 @@ echo "  docker-compose -f docker-compose-arm64.yml down"
 # Wait for user to press Ctrl+C
 echo "Press Ctrl+C to exit this script (containers will continue running)"
 tail -f /dev/null
+
+echo "To run the test-runner container manually, use the following command:"
+echo "docker run -it --rm \\
+  -v $(pwd)/test-ssh:/root/.ssh \\
+  -e SSH_PRIVATE_KEY_PATH=/root/.ssh/id_rsa \\
+  -e GITHUB_TOKEN=$GITHUB_TOKEN \\
+  test-runner"
