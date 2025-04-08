@@ -45,22 +45,22 @@ git config --global user.email "test@example.com"
 
 # Set up Concourse target
 echo "Configuring Concourse target..."
-fly -t test login -c "$CONCOURSE_URL" -n main --team-name main -u test -p test
-fly -t test sync
+fly -t cml-k8s-n-01 login -c "$CONCOURSE_URL" -n main --team-name main -u test -p test
+fly -t cml-k8s-n-01 sync
 
 # Clone required repositories
-if [ ! -d "/root/git/${REPOS_OWNER}/params" ]; then
+if [ ! -d "/root/git/params" ]; then
     echo "Cloning params repository..."
-    mkdir -p "/root/git/${REPOS_OWNER}"
-    cd "/root/git/${REPOS_OWNER}"
-    git clone "git@github.com:${REPOS_OWNER}/params.git"
+    mkdir -p "/root/git"
+    cd "/root/git"
+    git clone "git@github.com:${OWNER}/params.git"
 fi
 
-if [ ! -d "/root/git/${REPOS_OWNER}/ns-mgmt" ]; then
+if [ ! -d "/root/git/ns-mgmt" ]; then
     echo "Cloning ns-mgmt repository..."
-    mkdir -p "/root/git/${REPOS_OWNER}"
-    cd "/root/git/${REPOS_OWNER}"
-    git clone "git@github.com:${REPOS_OWNER}/ns-mgmt.git"
+    mkdir -p "/root/git"
+    cd "/root/git"
+    git clone "git@github.com:${OWNER}/ns-mgmt.git"
 fi
 
 # Run the automated tests

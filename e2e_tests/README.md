@@ -62,14 +62,14 @@ The end-to-end tests verify:
 You can customize the test environment by setting these environment variables:
 
 - `GITHUB_TOKEN`: Your GitHub personal access token (required)
-- `REPOS_OWNER`: GitHub owner of the repositories (default: malston)
-- `FOUNDATION_NAME`: Name to use for the foundation (default: test)
+- `OWNER`: GitHub owner of the repositories (default: malston)
+- `FOUNDATION_NAME`: Name to use for the foundation (default: cml-k8s-n-01)
 
 Example:
 ```bash
 export GITHUB_TOKEN=ghp_abcdef123456
-export REPOS_OWNER=your-github-username
-export FOUNDATION_NAME=custom-foundation
+export OWNER=your-github-username
+export FOUNDATION_NAME=cml-k8s-n-01
 
 make -f Makefile.e2e run-tests
 ```

@@ -72,8 +72,8 @@ services:
       - GIT_WORKSPACE=/root/git
       - PIPELINE_HELPERS_LOG_TO_FILE=1
       - SSH_PRIVATE_KEY_PATH=/root/.ssh/id_rsa
-      - REPOS_OWNER=malston
-      - FOUNDATION_NAME=test
+      - OWNER=malston
+      - FOUNDATION_NAME=cml-k8s-n-01
     command: /app/scripts/run-tests.sh
 
 volumes:

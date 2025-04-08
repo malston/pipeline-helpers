@@ -19,24 +19,34 @@ RUN mkdir -p /tmp/fly && \
     chmod +x /usr/local/bin/fly && \
     rm -rf /tmp/fly
 
+# Install carvel ytt (YAML Templating Tool)
+RUN mkdir -p /tmp/ytt && \
+    curl -Lo /tmp/ytt/ytt-linux-arm64 https://github.com/carvel-dev/ytt/releases/download/v0.45.3/ytt-linux-amd64 && \
+    mv /tmp/ytt/ytt-linux-arm64 /usr/local/bin/ytt && \
+    chmod +x /usr/local/bin/ytt && \
+    rm -rf /tmp/ytt && \
+    # Verify installation
+    ytt --version
+
 # Set up directories
 WORKDIR /app
 RUN mkdir -p /root/git /test-results
 
 # Install pipeline-helpers
 COPY . /app/
+RUN pip install -e .
 
-# Copy test scripts and set permissions
-COPY scripts/run-tests.sh /app/scripts/
+# Copy test scripts
+COPY scripts/run-tests.sh /app/scripts/run-tests.sh
 COPY e2e_tests/ /app/e2e_tests/
+RUN chmod +x /app/scripts/run-tests.sh
 
-# Make sure script is executable - using explicit chmod with full path
-RUN chmod +x /app/scripts/run-tests.sh && \
-    ls -la /app/scripts/run-tests.sh && \
-    pip install -e .
+# Pre-populate known_hosts with GitHub's key to avoid warnings
+RUN mkdir -p /root/.ssh && \
+    ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> /root/.ssh/known_hosts && \
+    chmod 600 /root/.ssh/known_hosts
 
 # Create SSH directory for git cloning
-RUN mkdir -p /root/.ssh && \
-    chmod 700 /root/.ssh
+RUN chmod 700 /root/.ssh
 
 CMD ["/app/scripts/run-tests.sh"]

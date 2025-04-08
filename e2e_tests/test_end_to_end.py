@@ -30,8 +30,8 @@ class EndToEndTest(unittest.TestCase):
         cls.github_token = os.environ.get("GITHUB_TOKEN")
         cls.concourse_url = os.environ.get("CONCOURSE_URL", "http://concourse-web:8080")
         cls.git_workspace = os.environ.get("GIT_WORKSPACE", "/root/git")
-        cls.repos_owner = os.environ.get("REPOS_OWNER", "malston")
-        cls.foundation = os.environ.get("FOUNDATION_NAME", "test")
+        cls.repos_owner = os.environ.get("OWNER", "malston")
+        cls.foundation = os.environ.get("FOUNDATION_NAME", "cml-k8s-n-01")
 
         # Check required environment variables
         if not cls.github_token:
@@ -41,8 +41,8 @@ class EndToEndTest(unittest.TestCase):
         # Create repo paths
         cls.repo_name = "ns-mgmt"
         cls.params_repo_name = "params"
-        cls.repo_path = os.path.join(cls.git_workspace, cls.repos_owner, cls.repo_name)
-        cls.params_path = os.path.join(cls.git_workspace, cls.repos_owner, cls.params_repo_name)
+        cls.repo_path = os.path.join(cls.git_workspace, cls.repo_name)
+        cls.params_path = os.path.join(cls.git_workspace, cls.params_repo_name)
 
         # Make sure repos are cloned
         cls._ensure_repos_cloned()
@@ -61,10 +61,10 @@ class EndToEndTest(unittest.TestCase):
 
         # Check if repos are git repositories
         git_helper = GitHelper(git_dir=cls.git_workspace, repo_dir=cls.repo_path, repo=cls.repo_name)
-        if not git_helper.check_git_repo(f"{cls.repos_owner}/{cls.repo_name}"):
+        if not git_helper.check_git_repo(f"{cls.repo_name}"):
             cls.logger.error(f"{cls.repo_path} is not a valid git repository")
             sys.exit(1)
-        if not git_helper.check_git_repo(f"{cls.repos_owner}/{cls.params_repo_name}"):
+        if not git_helper.check_git_repo(f"{cls.params_repo_name}"):
             cls.logger.error(f"{cls.params_path} is not a valid git repository")
             sys.exit(1)
 
@@ -170,8 +170,8 @@ class EndToEndTest(unittest.TestCase):
                 [
                     "create-release",
                     "-f", self.foundation,
-                    "-r", f"{self.repos_owner}/{self.repo_name}",
-                    "-p", f"{self.repos_owner}/{self.params_repo_name}",
+                    "-r", f"{self.repo_name}",
+                    "-p", f"{self.params_repo_name}",
                     "--dry-run",
                 ],
                 check=True,
@@ -197,8 +197,8 @@ class EndToEndTest(unittest.TestCase):
                 [
                     "demo-release-pipeline",
                     "-f", self.foundation,
-                    "-r", f"{self.repos_owner}/{self.repo_name}",
-                    "-p", f"{self.repos_owner}/{self.params_repo_name}",
+                    "-r", f"{self.repo_name}",
+                    "-p", f"{self.params_repo_name}",
                     "-b", "develop",
                     "--dry-run",
                 ],
@@ -219,14 +219,14 @@ class EndToEndTest(unittest.TestCase):
 
     def test_05_update_params_release_tag_dry_run(self):
         """Test update-params-release-tag in dry run mode."""
-        # This would normally require actual git tags, 
+        # This would normally require actual git tags,
         # but we're just checking the command doesn't fatally error
         try:
             subprocess.run(
                 [
                     "update-params-release-tag",
-                    "-r", f"{self.repos_owner}/{self.repo_name}",
-                    "-p", f"{self.repos_owner}/{self.params_repo_name}",
+                    "-r", f"{self.repo_name}",
+                    "-p", f"{self.params_repo_name}",
                 ],
                 check=False,  # Allow failure since we don't have real tags
                 capture_output=True,

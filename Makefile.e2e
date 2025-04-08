@@ -13,8 +13,8 @@ help:
 	@echo ""
 	@echo "Environment variables:"
 	@echo "  GITHUB_TOKEN - Your GitHub personal access token (required)"
-	@echo "  REPOS_OWNER  - GitHub owner of the repos (default: malston)"
-	@echo "  FOUNDATION_NAME - Name to use for foundation (default: test)"
+	@echo "  OWNER  - GitHub owner of the repos (default: malston)"
+	@echo "  FOUNDATION_NAME - Name to use for foundation (default: cml-k8s-n-01)"
 
 # Check that required environment variables are set
 check-env:
